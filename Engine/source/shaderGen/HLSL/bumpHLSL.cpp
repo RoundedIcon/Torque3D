@@ -236,7 +236,7 @@ void BumpFeatHLSL::setTexData(   Material::StageData &stageDat,
 
 
 ParallaxFeatHLSL::ParallaxFeatHLSL()
-   : mIncludeDep( "shaders/common/torque.hlsl" )
+   : mIncludeDep(String(Con::getVariable("$Core::CommonShaderPath")) + String("/torque.hlsl"))
 {
    addDependency( &mIncludeDep );
 }

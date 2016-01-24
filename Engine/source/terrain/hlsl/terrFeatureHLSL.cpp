@@ -280,8 +280,8 @@ ShaderFeature::Resources TerrainBaseMapFeatHLSL::getResources( const MaterialFea
 }
 
 TerrainDetailMapFeatHLSL::TerrainDetailMapFeatHLSL()
-   :  mTorqueDep( "shaders/common/torque.hlsl" ),
-      mTerrainDep( "shaders/common/terrain/terrain.hlsl" )
+   : mTorqueDep(String(Con::getVariable("$Core::CommonShaderPath")) + String("/torque.hlsl")),
+   mTerrainDep(String(Con::getVariable("$Core::CommonShaderPath")) + String("/terrain/terrain.hlsl"))
       
 {
    addDependency( &mTorqueDep );
@@ -596,8 +596,8 @@ ShaderFeature::Resources TerrainDetailMapFeatHLSL::getResources( const MaterialF
 
 
 TerrainMacroMapFeatHLSL::TerrainMacroMapFeatHLSL()
-   :  mTorqueDep( "shaders/common/torque.hlsl" ),
-      mTerrainDep( "shaders/common/terrain/terrain.hlsl" )
+   : mTorqueDep(String(Con::getVariable("$Core::CommonShaderPath")) + String("/torque.hlsl")),
+   mTerrainDep(String(Con::getVariable("$Core::CommonShaderPath")) + String("/terrain/terrain.hlsl"))
       
 {
    addDependency( &mTorqueDep );
