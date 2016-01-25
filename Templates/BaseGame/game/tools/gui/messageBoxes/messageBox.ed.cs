@@ -39,13 +39,12 @@ if( isObject( IODropdownDlg ) )
    
 
 // Load Editor Dialogs
-exec("./messageBoxOk.ed.gui");
+exec("./messageBoxOK.ed.gui");
 exec("./messageBoxYesNo.ed.gui");
 exec("./messageBoxYesNoCancel.ed.gui");
-exec("./messageBoxOkCancel.ed.gui");
-exec("./MessageBoxOKCancelDetailsDlg.ed.gui");
+exec("./messageBoxOKCancel.ed.gui");
+exec("./messageBoxOKCancelDetailsDlg.ed.gui");
 exec("./messagePopup.ed.gui");
-exec("./IODropdownDlg.ed.gui");
 
 
 
