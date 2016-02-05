@@ -26,19 +26,22 @@ function ChooseLevelDlg::onWake( %this )
    CL_levelList.clear();
    ChooseLevelWindow->SmallPreviews.clear();
    
-   %i = 0;
-   for(%file = findFirstFile($Server::MissionFileSpec); %file !$= ""; %file = findNextFile($Server::MissionFileSpec))
+   %count = LevelFilesList.count();
+   for ( %i=0; %i < %count; %i++ )
    {
+      %file = LevelFilesList.getKey( %i );
+      if ( !isFile(%file @ ".mis") && !isFile(%file) )
+         continue;
+         
       // Skip our new level/mission if we arent choosing a level
       // to launch in the editor.
       if ( !%this.launchInEditor )
       {
-         if (strstr(%file, "newMission.mis") > -1)
+         %fileName = fileName(%file);
+         if (strstr(%fileName, "newMission.mis") > -1 || strstr(%fileName, "newLevel.mis") > -1)
             continue;      
-         if (strstr(%file, "newLevel.mis") > -1)
-            continue;
       }
-      
+                  
       %this.addMissionFile( %file );
    }
    

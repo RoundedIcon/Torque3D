@@ -50,6 +50,8 @@ function UI::create( %this )
    exec("./scripts/joinServerMenu.cs");
    exec("./scripts/pauseMenu.cs");
    
+   %dbList = new ArrayObject(LevelFilesList);
+   
    Canvas.pushDialog(MainMenuGui);
 }
 

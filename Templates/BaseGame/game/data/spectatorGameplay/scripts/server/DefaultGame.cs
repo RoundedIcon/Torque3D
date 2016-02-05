@@ -27,26 +27,28 @@
 // the list of SpawnGroups till it finds a valid spawn object.
 // These override the values set in core/scripts/server/spawn.cs
 //-----------------------------------------------------------------------------
+function DefaultGame::initGameVars(%this)
+{
+   // Leave $Game::defaultPlayerClass and $Game::defaultPlayerDataBlock as empty strings ("")
+   // to spawn a the $Game::defaultCameraClass as the control object.
+   $Game::DefaultPlayerClass = "";
+   $Game::DefaultPlayerDataBlock = "";
+   $Game::DefaultPlayerSpawnGroups = "CameraSpawnPoints PlayerSpawnPoints PlayerDropPoints";
 
-// Leave $Game::defaultPlayerClass and $Game::defaultPlayerDataBlock as empty strings ("")
-// to spawn a the $Game::defaultCameraClass as the control object.
-$Game::DefaultPlayerClass = "";
-$Game::DefaultPlayerDataBlock = "";
-$Game::DefaultPlayerSpawnGroups = "CameraSpawnPoints PlayerSpawnPoints PlayerDropPoints";
+   //-----------------------------------------------------------------------------
+   // What kind of "camera" is spawned is either controlled directly by the
+   // SpawnSphere or it defaults back to the values set here. This also controls
+   // which SimGroups to attempt to select the spawn sphere's from by walking down
+   // the list of SpawnGroups till it finds a valid spawn object.
+   // These override the values set in core/scripts/server/spawn.cs
+   //-----------------------------------------------------------------------------
+   $Game::DefaultCameraClass = "Camera";
+   $Game::DefaultCameraDataBlock = "Observer";
+   $Game::DefaultCameraSpawnGroups = "CameraSpawnPoints PlayerSpawnPoints PlayerDropPoints";
 
-//-----------------------------------------------------------------------------
-// What kind of "camera" is spawned is either controlled directly by the
-// SpawnSphere or it defaults back to the values set here. This also controls
-// which SimGroups to attempt to select the spawn sphere's from by walking down
-// the list of SpawnGroups till it finds a valid spawn object.
-// These override the values set in core/scripts/server/spawn.cs
-//-----------------------------------------------------------------------------
-$Game::DefaultCameraClass = "Camera";
-$Game::DefaultCameraDataBlock = "Observer";
-$Game::DefaultCameraSpawnGroups = "CameraSpawnPoints PlayerSpawnPoints PlayerDropPoints";
-
-// Global movement speed that affects all Cameras
-$Camera::MovementSpeed = 30;
+   // Global movement speed that affects all Cameras
+   $Camera::MovementSpeed = 30;
+}
 
 //-----------------------------------------------------------------------------
 // DefaultGame manages the communication between the server's world and the
@@ -93,16 +95,26 @@ function DefaultGame::onClientLeaveGame(%this, %client)
 //-----------------------------------------------------------------------------
 function DefaultGame::onMissionStart(%this)
 {
+   //set up the game and game variables
+   %this.initGameVars();
+
+   $Game::Duration = %this.duration;
 }
 
 function DefaultGame::onMissionEnded(%this)
 {
+   cancel($Game::Schedule);
+   $Game::Running = false;
+   $Game::Cycling = false;
 }
 
 function DefaultGame::onMissionReset(%this)
 {
    // Called by resetMission(), after all the temporary mission objects
    // have been deleted.
+   %this.initGameVars();
+
+   $Game::Duration = %this.duration;
 }
 
 //-----------------------------------------------------------------------------

@@ -1609,49 +1609,22 @@ function ColladaImportDlg::loadLights(%this)
    }
 }
 
-function updateTSShapeLoadProgress(%progress, %msg)
+function updateToolTSShapeLoadProgress(%progress, %msg)
 {
-   // Check if the loading GUI is visible and use that instead of the
-   // separate import progress GUI if possible
-   if ( isObject(LoadingGui) && LoadingGui.isAwake() )
+   // Show/Hide gui at the start/end of the import process
+   if ( %progress == 0 )
    {
-      // Save/Restore load progress at the start/end of the import process
-      if ( %progress == 0 )
-      {
-         ColladaImportProgress.savedProgress = LoadingProgress.getValue();
-         ColladaImportProgress.savedText = LoadingProgressTxt.getValue();
-
-         ColladaImportProgress.msgPrefix = "Importing " @ %msg;
-         %msg = "Reading file into memory...";
-      }
-      else if ( %progress == 1.0 )
-      {
-         LoadingProgress.setValue( ColladaImportProgress.savedProgress );
-         LoadingProgressTxt.setValue( ColladaImportProgress.savedText );
-      }
-
-      %msg = ColladaImportProgress.msgPrefix @ ": " @ %msg;
-
-      %progressCtrl = LoadingProgress;
-      %textCtrl = LoadingProgressTxt;
+      ColladaImportProgress-->window.text = "Importing" SPC %msg;
+      %msg = "Reading file into memory...";
+      Canvas.pushDialog(ColladaImportProgress);
    }
-   else
+   else if ( %progress == 1.0 )
    {
-      // Show/Hide gui at the start/end of the import process
-      if ( %progress == 0 )
-      {
-         ColladaImportProgress-->window.text = "Importing" SPC %msg;
-         %msg = "Reading file into memory...";
-         Canvas.pushDialog(ColladaImportProgress);
-      }
-      else if ( %progress == 1.0 )
-      {
-         Canvas.popDialog(ColladaImportProgress);
-      }
-
-      %progressCtrl = ColladaImportProgress-->progressBar;
-      %textCtrl = ColladaImportProgress-->progressText;
+      Canvas.popDialog(ColladaImportProgress);
    }
+
+   %progressCtrl = ColladaImportProgress-->progressBar;
+   %textCtrl = ColladaImportProgress-->progressText;
 
    // Update progress indicators
    if (%progress == 0)

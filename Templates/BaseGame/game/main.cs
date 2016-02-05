@@ -1,6 +1,6 @@
 // Display a splash window immediately to improve app responsiveness before
 // engine is initialized and main window created.
-displaySplashWindow("data/art/splash.bmp");
+displaySplashWindow("data/splash.bmp");
 
 // Console does something.
 setLogMode(6);

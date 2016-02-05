@@ -108,8 +108,8 @@ singleton ShaderData( VolumetricFogPrePassShader )
    DXVertexShaderFile = $Core::CommonShaderPath @ "/VolumetricFog/VFogPreV.hlsl";
    DXPixelShaderFile = $Core::CommonShaderPath @ "/VolumetricFog/VFogPreP.hlsl";
 	
-   OGLVertexShaderFile  = "shaders/common/VolumetricFog/gl/VFogPreV.glsl";
-   OGLPixelShaderFile   = "shaders/common/VolumetricFog/gl/VFogPreP.glsl";
+   OGLVertexShaderFile  = $Core::CommonShaderPath @ "/VolumetricFog/gl/VFogPreV.glsl";
+   OGLPixelShaderFile   = $Core::CommonShaderPath @ "/VolumetricFog/gl/VFogPreP.glsl";
    
    pixVersion = 3.0;
 };

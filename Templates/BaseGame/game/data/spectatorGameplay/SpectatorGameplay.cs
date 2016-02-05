@@ -35,6 +35,16 @@ function SpectatorGameplay::create( %this )
       DatablockFilesList.add( "data/spectatorGameplay/scripts/datablocks/sounds.cs" );
    }
    
+   if(isObject(LevelFilesList))
+   {
+      for( %file = findFirstFile( "data/spectatorGameplay/levels/*.mis" );
+      %file !$= "";
+      %file = findNextFile( "data/spectatorGameplay/levels/*.mis" ))
+      {
+         LevelFilesList.add(%file);
+      }
+   }
+   
    if (!$Server::Dedicated)
    {
       //client scripts
@@ -50,25 +60,6 @@ function SpectatorGameplay::create( %this )
       //guis
       exec("./scripts/gui/playGui.gui");
       exec("./scripts/gui/playGui.cs");
-      
-      //postFX stuffs
-      exec("./scripts/gui/postFxManager.gui");
-      
-      //init the postFX
-      %pattern = "./scripts/client/postFX/*.cs";   
-      %file = findFirstFile( %pattern );
-      if ( %file $= "" )
-      {
-         // Try for DSOs next.
-         %pattern = "./scripts/client/postFX/*.cs.dso";
-         %file = findFirstFile( %pattern );
-      }
-      
-      while( %file !$= "" )
-      {      
-         exec( %file );
-         %file = findNextFile( %pattern );
-      }
    }
 }
 
