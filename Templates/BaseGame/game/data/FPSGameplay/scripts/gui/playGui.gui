@@ -26,7 +26,7 @@
       noCursor = "1";
 
    new GuiBitmapCtrl(CenterPrintDlg) {
-      bitmap = "data/FPSGameplay/art/gui/hudfill.png";
+      bitmap = "data/UI/art/gui/hudfill.png";
       wrap = "0";
       isContainer = "0";
       Profile = "CenterPrintProfile";
@@ -61,7 +61,7 @@
       };
    };
    new GuiBitmapCtrl(BottomPrintDlg) {
-      bitmap = "data/FPSGameplay/art/gui/hudfill.png";
+      bitmap = "data/UI/art/gui/hudfill.png";
       wrap = "0";
       isContainer = "0";
       Profile = "CenterPrintProfile";
@@ -96,7 +96,7 @@
       };
    };
    new GuiBitmapCtrl(LagIcon) {
-      bitmap = "data/FPSGameplay/art/gui/lagIcon.png";
+      bitmap = "data/UI/art/gui/lagIcon.png";
       wrap = "0";
       isContainer = "0";
       Profile = "GuiDefaultProfile";
@@ -187,7 +187,7 @@
       canSaveDynamicFields = "0";
 
       new GuiBitmapCtrl() {
-         bitmap = "core/art/gui/images/hudfill.png";
+         bitmap = "data/UI/art/hudfill.png";
          wrap = "0";
          isContainer = "0";
          Profile = "GuiDefaultProfile";

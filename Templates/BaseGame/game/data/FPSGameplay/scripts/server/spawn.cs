@@ -283,6 +283,12 @@ function GameConnection::spawnPlayer(%this, %spawnPoint, %noControl)
       
       if (!%player.isMemberOfClass("Player"))
          warn("Trying to spawn a class that does not derive from Player.");
+         
+      //Ensure we have a valid spawn point
+      if(%spawnPoint $= "")
+      {
+         %spawnPoint = pickPlayerSpawnPoint($Game::DefaultPlayerSpawnGroups).getTransform();  
+      }
 
       // Treat %spawnPoint as a transform
       %player.setTransform(%spawnPoint);

@@ -157,8 +157,6 @@ function DeathMatchGame::onClientEnterGame(%this, %client)
       %client.isAiControlled(),
       %client.isAdmin,
       %client.isSuperAdmin);
-      
-   %client.initialControlSet();
 }
 
 function DeathMatchGame::onClientLeaveGame(%this, %client)
@@ -203,7 +201,10 @@ function DeathMatchGame::onMissionStart(%this)
    // Start the game timer
    if ($Game::Duration)
       $Game::Schedule = %this.schedule($Game::Duration * 1000, "onGameDurationEnd");
+      
    $Game::Running = true;
+   
+   $Game = %this;
 }
 
 function DeathMatchGame::onMissionEnded(%this)
@@ -225,6 +226,7 @@ function DeathMatchGame::onMissionEnded(%this)
 
    $Game::Running = false;
    $Game::Cycling = false;
+   $Game = "";
 }
 
 function DeathMatchGame::onMissionReset(%this)
@@ -583,7 +585,7 @@ function DeathMatchGame::spawnPlayer(%game, %client, %spawnPoint, %noControl)
       %client.setControlObject(%control);
 }
 
-function DeathMatchGame::pickPointInSpawnSphere(%objectToSpawn, %spawnSphere)
+function DeathMatchGame::pickPointInSpawnSphere(%this, %objectToSpawn, %spawnSphere)
 {
    %SpawnLocationFound = false;
    %attemptsToSpawn = 0;
@@ -688,7 +690,7 @@ function DeathMatchGame::pickObserverSpawnPoint(%game)
 // because we're done playing.  We don't want to call destroyServer()
 // directly so we can first check that we're about to destroy the
 // correct server session.
-function gameCoreDestroyServer(%serverSession)
+function DeathMatchGame::DestroyServer(%serverSession)
 {
    if (%serverSession == $Server::Session)
    {

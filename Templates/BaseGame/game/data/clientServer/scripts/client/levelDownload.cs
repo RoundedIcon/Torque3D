@@ -46,7 +46,7 @@ function clientCmdMissionStartPhase1(%seq, %missionName, %musicTrack)
    
    //Prep the postFX stuff
    // Load the post effect presets for this mission.
-   %path = "data/levels/" @ fileBase( %missionName ) @ $PostFXManager::fileExtension;
+   %path = filePath( %missionName ) @ "/" @ fileBase( %missionName ) @ $PostFXManager::fileExtension;
 
    if ( isScriptFile( %path ) )
    {

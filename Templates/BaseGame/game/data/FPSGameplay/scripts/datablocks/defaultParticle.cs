@@ -22,7 +22,7 @@
 
 datablock ParticleData(DefaultParticle)
 {
-   textureName = "data/spectatorGameplay/art/particles/defaultParticle";
+   textureName = "data/FPSGameplay/art/particles/defaultParticle";
    dragCoefficient = 0.498534;
    gravityCoefficient = 0;
    inheritedVelFactor = 0.499022;
@@ -49,7 +49,7 @@ datablock ParticleData(DefaultParticle)
    times[2] = 0.494118;
    times[3] = 1;
    
-   animTexName = "data/spectatorGameplay/art/particles/defaultParticle";
+   animTexName = "data/FPSGameplay/art/particles/defaultParticle";
 };
 
 datablock ParticleEmitterData(DefaultEmitter)

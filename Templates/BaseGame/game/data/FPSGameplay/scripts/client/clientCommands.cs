@@ -20,6 +20,29 @@
 // IN THE SOFTWARE.
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Server Admin Commands
+//-----------------------------------------------------------------------------
+function SAD(%password)
+{
+   if (%password !$= "")
+      commandToServer('SAD', %password);
+}
+
+function SADSetPassword(%password)
+{
+   commandToServer('SADSetPassword', %password);
+}
+
+//----------------------------------------------------------------------------
+// Misc server commands
+//----------------------------------------------------------------------------
+
+function clientCmdSyncClock(%time)
+{
+   // Time update from the server, this is only sent at the start of a mission
+   // or when a client joins a game in progress.
+}
 
 // ----------------------------------------------------------------------------
 // WeaponHUD
@@ -56,7 +79,7 @@ function clientCmdRefreshWeaponHUD(%amount, %preview, %ret, %zoomRet, %amountInC
    else
    {
       WeaponHUD.setVisible(true);//PreviewImage.setVisible(true);
-      PreviewImage.setbitmap("art/gui/weaponHud/"@ detag(%preview));
+      PreviewImage.setbitmap("data/FPSGameplay/art/gui/weaponHud/"@ detag(%preview));
    }
 
    if (%ret $= "")
@@ -64,7 +87,7 @@ function clientCmdRefreshWeaponHUD(%amount, %preview, %ret, %zoomRet, %amountInC
    else
    {
       Reticle.setVisible(true);
-      Reticle.setbitmap("art/gui/weaponHud/"@ detag(%ret));
+      Reticle.setbitmap("data/FPSGameplay/art/gui/weaponHud/"@ detag(%ret));
    }
 
    if (isObject(ZoomReticle))
@@ -75,7 +98,83 @@ function clientCmdRefreshWeaponHUD(%amount, %preview, %ret, %zoomRet, %amountInC
       }
       else
       {
-         ZoomReticle.setBitmap("art/gui/weaponHud/"@ detag(%zoomRet));
+         ZoomReticle.setBitmap("data/FPSGameplay/art/gui/weaponHud/"@ detag(%zoomRet));
       }
+   }
+}
+
+//-----------------------------------------------------------------------------
+// Damage Direction Indicator
+//-----------------------------------------------------------------------------
+
+function clientCmdSetDamageDirection(%direction)
+{
+   eval("%ctrl = DamageHUD-->damage_" @ %direction @ ";");
+   if (isObject(%ctrl))
+   {
+      // Show the indicator, and schedule an event to hide it again
+      cancelAll(%ctrl);
+      %ctrl.setVisible(true);
+      %ctrl.schedule(500, setVisible, false);
+   }
+}
+
+//-----------------------------------------------------------------------------
+// Teleporter visual effect
+//-----------------------------------------------------------------------------
+
+function clientCmdPlayTeleportEffect(%position, %effectDataBlock)
+{
+   if (isObject(%effectDataBlock))
+   {
+      new Explosion()
+      {
+         position = %position;
+         dataBlock = %effectDataBlock;
+      };
+   }
+}
+
+// ----------------------------------------------------------------------------
+// Vehicle Support
+// ----------------------------------------------------------------------------
+function clientCmdtoggleVehicleMap(%toggle)
+{
+   if(%toggle)
+   {
+      moveMap.pop();
+	  // clear movement
+	  $mvForwardAction = 0;
+	  $mvBackwardAction = 0;
+      vehicleMap.push();
+   }
+   else
+   {
+      vehicleMap.pop();
+      moveMap.push();
+   }
+}
+
+// ----------------------------------------------------------------------------
+// Turret Support
+// ----------------------------------------------------------------------------
+
+// Call by the Turret class when a player mounts or unmounts it.
+// %turret = The turret that was mounted
+// %player = The player doing the mounting
+// %mounted = True if the turret was mounted, false if it was unmounted
+function turretMountCallback(%turret, %player, %mounted)
+{
+   //echo ( "\c4turretMountCallback -> " @ %mounted );
+
+   if (%mounted)
+   {
+      // Push the action map
+      turretMap.push();
+   }
+   else
+   {
+      // Pop the action map
+      turretMap.pop();
    }
 }

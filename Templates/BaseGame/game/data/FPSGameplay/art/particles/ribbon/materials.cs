@@ -81,7 +81,7 @@ singleton CustomMaterial( TexturedRibbonMat )
    BlendOp = AddAlpha;
    translucentBlendOp = AddAlpha;
 
-   sampler["ribTex"] = "data/spectatorGameplay/art/ribbons/ribTex.png";
+   sampler["ribTex"] = "../ribTex.png";
    
    preload = true;
 };

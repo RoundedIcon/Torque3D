@@ -19,13 +19,12 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 //-----------------------------------------------------------------------------
-
-$PostFXManager::Settings::EnableVignette = "0";
-$PostFXManager::Settings::EnableDOF = "0";
-$PostFXManager::Settings::EnableSSAO = "0";
-$PostFXManager::Settings::EnableHDR = "0";
-$PostFXManager::Settings::EnableLightRays = "0";
-$PostFXManager::Settings::EnablePostFX = "0";
+$PostFXManager::Settings::EnableVignette = "1";
+$PostFXManager::Settings::EnableDOF = "1";
+$PostFXManager::Settings::EnabledSSAO = "1";
+$PostFXManager::Settings::EnableHDR = "1";
+$PostFXManager::Settings::EnableLightRays = "1";
+$PostFXManager::Settings::EnablePostFX = "1";
 $PostFXManager::Settings::Vignette::VMax = "0.6";
 $PostFXManager::Settings::DOF::BlurCurveFar = "";
 $PostFXManager::Settings::DOF::BlurCurveNear = "";

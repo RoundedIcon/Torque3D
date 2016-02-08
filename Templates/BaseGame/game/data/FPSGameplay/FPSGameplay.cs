@@ -15,12 +15,28 @@
 function FPSGameplay::create( %this )
 {
    //server scripts
+   exec("./scripts/server/aiPlayer.cs");
    exec("./scripts/server/camera.cs");
-   exec("./scripts/server/DefaultGame.cs");
-   exec("./scripts/server/deathMatchGame.cs");
-   exec("./scripts/server/VolumetricFog.cs");
-   exec("./scripts/server/spawn.cs");
    exec("./scripts/server/chat.cs");
+   exec("./scripts/server/cheetah.cs");
+   exec("./scripts/server/commands.cs");
+   exec("./scripts/server/deathMatchGame.cs");
+   exec("./scripts/server/health.cs");
+   exec("./scripts/server/inventory.cs");
+   exec("./scripts/server/item.cs");
+   exec("./scripts/server/player.cs");
+   exec("./scripts/server/projectile.cs");
+   exec("./scripts/server/proximityMine.cs");
+   exec("./scripts/server/radiusDamage.cs");
+   exec("./scripts/server/shapeBase.cs");
+   exec("./scripts/server/spawn.cs");
+   exec("./scripts/server/teleporter.cs");
+   exec("./scripts/server/triggers.cs");
+   exec("./scripts/server/turret.cs");
+   exec("./scripts/server/vehicle.cs");
+   exec("./scripts/server/vehicleWheeled.cs");
+   exec("./scripts/server/VolumetricFog.cs");
+   exec("./scripts/server/weapon.cs");
    
    //add DBs
    if(isObject(DatablockFilesList))
@@ -56,6 +72,8 @@ function FPSGameplay::create( %this )
    
    if (!$Server::Dedicated)
    {
+      exec("data/FPSGameplay/scripts/client/gameProfiles.cs");
+      
       //client scripts
       $KeybindPath = "data/FPSGameplay/scripts/client/default.keybinds.cs";
       exec($KeybindPath);
@@ -67,13 +85,16 @@ function FPSGameplay::create( %this )
       exec("data/FPSGameplay/scripts/client/inputCommands.cs");
       
       //guis
+      exec("./scripts/gui/chatHud.gui");
+      exec("./scripts/gui/playerList.gui");
       exec("./scripts/gui/playGui.gui");
+      
       exec("./scripts/gui/playGui.cs");
       
-      exec("data/FPSGameplay/scripts/client/clientCommands.cs");
-      exec("data/FPSGameplay/scripts/client/playerList.cs");
-      exec("data/FPSGameplay/scripts/client/messageHud.cs");
       exec("data/FPSGameplay/scripts/client/chatHud.cs");
+      exec("data/FPSGameplay/scripts/client/clientCommands.cs");
+      exec("data/FPSGameplay/scripts/client/messageHud.cs");
+      exec("data/FPSGameplay/scripts/client/playerList.cs");
    }
 }
 

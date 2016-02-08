@@ -216,7 +216,9 @@ function PlayerData::damage(%this, %obj, %sourceObject, %position, %damage, %dam
          %obj.setDamageDirection(%sourceObject, %position);
 
       if (%obj.getState() $= "Dead")
-         %client.onDeath(%sourceObject, %sourceClient, %damageType, %location);
+      {
+         $Game.onDeath(%client, %sourceObject, %sourceClient, %damageType, %location);
+      }
    }
 }
 

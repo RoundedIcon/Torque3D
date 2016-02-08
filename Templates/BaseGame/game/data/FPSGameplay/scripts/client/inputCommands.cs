@@ -19,22 +19,35 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 //-----------------------------------------------------------------------------
-
-//------------------------------------------------------------------------------
-// Non-remapable binds
-//------------------------------------------------------------------------------
 function escapeFromGame()
 {
-   /*if ( $Server::ServerType $= "SinglePlayer" )
-      MessageBoxYesNo( "Exit", "Exit from this Mission?", "disconnect();", "");
-   else
-      MessageBoxYesNo( "Disconnect", "Disconnect from the server?", "disconnect();", "");*/
    disconnect();
 }
 
-//------------------------------------------------------------------------------
-// Movement Keys
-//------------------------------------------------------------------------------
+function showPlayerList(%val)
+{
+   if (%val)
+      PlayerListGui.toggle();
+}
+
+function hideHUDs(%val)
+{
+   if (%val)
+      HudlessPlayGui.toggle();
+}
+
+function doScreenShotHudless(%val)
+{
+   if(%val)
+   {
+      canvas.setContent(HudlessPlayGui);
+      //doScreenshot(%val);
+      schedule(10, 0, "doScreenShot", %val);
+   }
+   else
+      canvas.setContent(PlayGui);
+}
+
 $movementSpeed = 1; // m/s
 
 function setSpeed(%speed)
@@ -99,34 +112,10 @@ function panDown( %val )
    $mvPitchUpSpeed = %val ? $Pref::Input::KeyboardTurnSpeed : 0;
 }
 
-function getVerticalMouseAdjustAmount(%val)
+function getMouseAdjustAmount(%val)
 {
-   %sensitivity = $pref::Input::VertMouseSensitivity;
-   
    // based on a default camera FOV of 90'
-   if(ServerConnection.zoomed)
-      %sensitivity = $pref::Input::ZoomVertMouseSensitivity;
-      
-   if($pref::Input::invertVerticalMouse)
-      %sensitivity *= -1;
-      
-   return(%val * ($cameraFov / 90) * 0.01) * %sensitivity;
-}
-
-function getHorizontalMouseAdjustAmount(%val)
-{
-   %sensitivity = $pref::Input::HorzMouseSensitivity;
-   
-   // based on a default camera FOV of 90'
-   if(ServerConnection.zoomed)
-      %sensitivity = $pref::Input::ZoomHorzMouseSensitivity;
-      
-   return(%val * ($cameraFov / 90) * 0.01) * %sensitivity;
-}
-
-function getRollMouseAdjustAmount(%val)
-{
-   return(%val * ($cameraFov / 90) * 0.01) * $pref::Input::RollMouseSensitivity;
+   return(%val * ($cameraFov / 90) * 0.01) * $pref::Input::LinkMouseSensitivity;
 }
 
 function getGamepadAdjustAmount(%val)
@@ -137,7 +126,7 @@ function getGamepadAdjustAmount(%val)
 
 function yaw(%val)
 {
-   %yawAdj = getHorizontalMouseAdjustAmount(%val);
+   %yawAdj = getMouseAdjustAmount(%val);
    if(ServerConnection.isControlObjectRotDampedCamera())
    {
       // Clamp and scale
@@ -150,7 +139,7 @@ function yaw(%val)
 
 function pitch(%val)
 {
-   %pitchAdj = getVerticalMouseAdjustAmount(%val);
+   %pitchAdj = getMouseAdjustAmount(%val);
    if(ServerConnection.isControlObjectRotDampedCamera())
    {
       // Clamp and scale
@@ -168,12 +157,30 @@ function jump(%val)
 
 function gamePadMoveX( %val )
 {
-   $mvXAxis_L = %val;
+   if(%val > 0)
+   {
+      $mvRightAction = %val * $movementSpeed;
+      $mvLeftAction = 0;
+   }
+   else
+   {
+      $mvRightAction = 0;
+      $mvLeftAction = -%val * $movementSpeed;
+   }
 }
 
 function gamePadMoveY( %val )
 {
-   $mvYAxis_L = %val;
+   if(%val > 0)
+   {
+      $mvForwardAction = %val * $movementSpeed;
+      $mvBackwardAction = 0;
+   }
+   else
+   {
+      $mvForwardAction = 0;
+      $mvBackwardAction = -%val * $movementSpeed;
+   }
 }
 
 function gamepadYaw(%val)
@@ -220,24 +227,21 @@ function gamepadPitch(%val)
    }
 }
 
-//------------------------------------------------------------------------------
-// Mouse Trigger
-//------------------------------------------------------------------------------
+function doCrouch(%val)
+{
+   $mvTriggerCount3++;
+}
+
+function doSprint(%val)
+{
+   $mvTriggerCount5++;
+}
+
 function mouseFire(%val)
 {
    $mvTriggerCount0++;
 }
 
-function altTrigger(%val)
-{
-   $mvTriggerCount1++;
-   
-   toggleZoom(%val);
-}
-
-//------------------------------------------------------------------------------
-// Gamepad Trigger
-//------------------------------------------------------------------------------
 function gamepadFire(%val)
 {
    if(%val > 0.1 && !$gamepadFireTriggered)
@@ -266,17 +270,6 @@ function gamepadAltTrigger(%val)
    }
 }
 
-//------------------------------------------------------------------------------
-// Zoom and FOV functions
-//------------------------------------------------------------------------------
-if($Player::CurrentFOV $= "")
-   $Player::CurrentFOV = $pref::Player::DefaultFOV;
-
-// toggleZoomFOV() works by dividing the CurrentFOV by 2.  Each time that this
-// toggle is hit it simply divides the CurrentFOV by 2 once again.  If the
-// FOV is reduced below a certain threshold then it resets to equal half of the
-// DefaultFOV value.  This gives us 4 zoom levels to cycle through.
-
 function toggleZoomFOV()
 {
     $Player::CurrentFOV = $Player::CurrentFOV / 2;
@@ -301,6 +294,8 @@ function turnOffZoom()
 {
    ServerConnection.zoomed = false;
    setFov(ServerConnection.getControlCameraDefaultFov());
+   Reticle.setVisible(true);
+   zoomReticle.setVisible(false);
 
    // Rather than just disable the DOF effect, we want to set it to the level's
    // preset values.
@@ -320,6 +315,8 @@ function toggleZoom(%val)
    {
       ServerConnection.zoomed = true;
       setFov($Player::CurrentFOV);
+      Reticle.setVisible(false);
+      zoomReticle.setVisible(true);
 
       DOFPostEffect.setAutoFocus( true );
       DOFPostEffect.setFocusParams( 0.5, 0.5, 50, 500, -5, 5 );
@@ -331,9 +328,11 @@ function toggleZoom(%val)
    }
 }
 
-//------------------------------------------------------------------------------
-// Camera & View functions
-//------------------------------------------------------------------------------
+function mouseButtonZoom(%val)
+{
+   toggleZoom(%val);
+}
+
 function toggleFreeLook( %val )
 {
    if ( %val )
@@ -356,9 +355,61 @@ function toggleCamera(%val)
       commandToServer('ToggleCamera');
 }
 
-//------------------------------------------------------------------------------
-// Demo recording functions
-//------------------------------------------------------------------------------
+function unmountWeapon(%val)
+{
+   if (%val)
+      commandToServer('unmountWeapon');
+}
+
+function throwWeapon(%val)
+{
+   if (%val)
+      commandToServer('Throw', "Weapon");
+}
+function tossAmmo(%val)
+{
+   if (%val)
+      commandToServer('Throw', "Ammo");
+}
+
+function nextWeapon(%val)
+{
+   if (%val)
+      commandToServer('cycleWeapon', "next");
+}
+
+function prevWeapon(%val)
+{
+   if (%val)
+      commandToServer('cycleWeapon', "prev");
+}
+
+function mouseWheelWeaponCycle(%val)
+{
+   if (%val < 0)
+      commandToServer('cycleWeapon', "next");
+   else if (%val > 0)
+      commandToServer('cycleWeapon', "prev");
+}
+
+function pageMessageHudUp( %val )
+{
+   if ( %val )
+      pageUpMessageHud();
+}
+
+function pageMessageHudDown( %val )
+{
+   if ( %val )
+      pageDownMessageHud();
+}
+
+function resizeMessageHud( %val )
+{
+   if ( %val )
+      cycleMessageHudSize();
+}
+
 function startRecordingDemo( %val )
 {
    if ( %val )
@@ -371,9 +422,6 @@ function stopRecordingDemo( %val )
       stopDemoRecord();
 }
 
-//------------------------------------------------------------------------------
-// Helper Functions
-//------------------------------------------------------------------------------
 function dropCameraAtPlayer(%val)
 {
    if (%val)
@@ -392,6 +440,9 @@ function bringUpOptions(%val)
       Canvas.pushDialog(OptionsDlg);
 }
 
+GlobalActionMap.bind(keyboard, "ctrl o", bringUpOptions);
+
+
 //------------------------------------------------------------------------------
 // Debugging Functions
 //------------------------------------------------------------------------------
@@ -400,6 +451,7 @@ function showMetrics(%val)
    if(%val)
       metrics("fps gfx shadow sfx terrain groundcover forest net");
 }
+GlobalActionMap.bind(keyboard, "ctrl F2", showMetrics);
 
 //------------------------------------------------------------------------------
 //
@@ -423,4 +475,54 @@ function doProfile(%val)
       profilerDumpToFile("profilerDumpToFile" @ getSimTime() @ ".txt");
       profilerEnable(false);
    }
+}
+
+// Trace a line along the direction the crosshair is pointing
+// If you find a car with a player in it...eject them
+function carjack()
+{
+   %player = LocalClientConnection.getControlObject();
+
+   if (%player.getClassName() $= "Player")
+   {
+      %eyeVec = %player.getEyeVector();
+
+      %startPos = %player.getEyePoint();
+      %endPos = VectorAdd(%startPos, VectorScale(%eyeVec, 1000));
+
+      %target = ContainerRayCast(%startPos, %endPos, $TypeMasks::VehicleObjectType);
+
+      if (%target)
+      {
+         // See if anyone is mounted in the car's driver seat
+         %mount = %target.getMountNodeObject(0);
+
+         // Can only carjack bots
+         // remove '&& %mount.getClassName() $= "AIPlayer"' to allow you
+         // to carjack anyone/anything
+         if (%mount && %mount.getClassName() $= "AIPlayer")
+         {
+            commandToServer('carUnmountObj', %mount);
+         }
+      }
+   }
+}
+
+function getOut()
+{
+   vehicleMap.pop();
+   moveMap.push();
+   commandToServer('dismountVehicle');
+}
+
+function brakeLights()
+{
+   // Turn on/off the Cheetah's head lights.
+   commandToServer('toggleBrakeLights');
+}
+
+function brake(%val)
+{
+   commandToServer('toggleBrakeLights');
+   $mvTriggerCount2++;
 }

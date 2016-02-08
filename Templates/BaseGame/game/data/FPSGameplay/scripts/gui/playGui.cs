@@ -41,7 +41,7 @@ function PlayGui::onWake(%this)
    }      
    
    // just update the action map here
-   FPSMoveMap.push();
+   moveMap.push();
 
    // hack city - these controls are floating around and need to be clamped
    if ( isFunction( "refreshCenterTextCtrl" ) )
@@ -56,7 +56,7 @@ function PlayGui::onSleep(%this)
       Canvas.popDialog( MainChatHud );
    
    // pop the keymaps
-   FPSMoveMap.pop();
+   moveMap.pop();
 }
 
 function PlayGui::clearHud( %this )
