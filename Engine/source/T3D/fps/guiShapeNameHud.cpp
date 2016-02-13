@@ -30,20 +30,23 @@
 #include "T3D/shapeBase.h"
 #include "gfx/gfxDrawUtil.h"
 #include "console/engineAPI.h"
+#include "gui/shiny/guiTickCtrl.h"
 
 
 //----------------------------------------------------------------------------
-/// Displays name & damage above shape objects.
+/// Displays name above shape objects and strings at specified points.
 ///
-/// This control displays the name and damage value of all named
-/// ShapeBase objects on the client.  The name and damage of objects
-/// within the control's display area are overlayed above the object.
+/// This control displays the name of all named ShapeBase objects on the
+/// client. The name of objects within the control's display area are
+/// overlayed above the object. Support has been added for free floating
+/// elements as well. A string can be rendered with a specified location,
+/// color, and lifetime by using the addElement() method of this gui.
 ///
 /// This GUI control must be a child of a TSControl, and a server connection
 /// and control object must be present.
 ///
-/// This is a stand-alone control and relies only on the standard base GuiControl.
-class GuiShapeNameHud : public GuiControl {
+/// This is a stand-alone control and relies on GuiTickCtrl.
+class GuiShapeNameHud : public GuiTickCtrl{
    typedef GuiControl Parent;
 
    // field data
@@ -62,11 +65,37 @@ class GuiShapeNameHud : public GuiControl {
 
    Point2I  mLabelPadding;
 
+	// element data
+	F32 mDefaultLifetime;
+	F32 mTime;
+
+	struct mElementInfo
+	{
+		Point3F position;
+		String damage;
+		F32 lifeTime;
+		ColorF color;
+		F32 time;
+	};
+
+	std::list<mElementInfo> mElementList;
+
 protected:
-   void drawName( Point2I offset, const char *buf, F32 opacity);
+   void drawName( Point2I offset, const char *buf, F32 opacity, ColorF color);
+
+	// GuiTickCtrl
+	void advanceTime(F32 timeDelta);
 
 public:
    GuiShapeNameHud();
+
+	void addElement(Point3F pos, String damage, F32 lifeTime, ColorF textColor);
+
+	// returns the number of active elements. This does not include Shapebase names
+	S32 getElementCount(){ return mElementList.size(); };
+
+	// clears all elements from the internal list. Shapebase names are not affected
+	void clearElements(){ mElementList.clear(); };
 
    // GuiControl
    virtual void onRender(Point2I offset, const RectI &updateRect);
@@ -84,11 +113,15 @@ public:
 IMPLEMENT_CONOBJECT(GuiShapeNameHud);
 
 ConsoleDocClass( GuiShapeNameHud,
-   "@brief Displays name and damage of ShapeBase objects in its bounds. Must be a child of a GuiTSCtrl and a server connection must be present.\n\n"
-   "This control displays the name and damage value of all named ShapeBase objects on the client. "
-   "The name and damage of objects within the control's display area are overlayed above the object.\n\n"
+   "@brief Displays name of ShapeBase objects and strings at specified points in its bounds."
+	"Must be a child of a GuiTSCtrl and a server connection must be present.\n\n"
+
+   "This control displays the of all named ShapeBase objects on the client. "
+   "The name of objects within the control's display area are overlayed above the object.\n\n"
+	"This control displays \"Elements\", user defined strings with certain colors and lifetimes. "
+	"The contents of the strings and their position/attributes are stored in an internal list.\n\n"
    "This GUI control must be a child of a TSControl, and a server connection and control object must be present. "
-   "This is a stand-alone control and relies only on the standard base GuiControl.\n\n"
+   "This is a stand-alone control and relies on GuiTickCtrl.\n\n"
    
    "@tsexample\n"
 		"\n new GuiShapeNameHud()"
@@ -124,7 +157,9 @@ GuiShapeNameHud::GuiShapeNameHud()
    mShowLabelFrame = mShowLabelFill = false;
    mVerticalOffset = 0.5f;
    mDistanceFade = 0.1f;
-   mLabelPadding.set(0, 0);
+	mLabelPadding.set(0, 0);
+	mTime = 0;
+	mDefaultLifetime = 3;
 }
 
 void GuiShapeNameHud::initPersistFields()
@@ -143,12 +178,48 @@ void GuiShapeNameHud::initPersistFields()
    addField( "showLabelFill",  TypeBool, Offset( mShowLabelFill, GuiShapeNameHud ), "If true, we draw a background for each shape name label." );
    addField( "showLabelFrame", TypeBool, Offset( mShowLabelFrame, GuiShapeNameHud ), "If true, we draw a frame around each shape name label."  );
    addField( "labelPadding", TypePoint2I, Offset( mLabelPadding, GuiShapeNameHud ), "The padding (in pixels) between the label text and the frame." );
-   addField( "verticalOffset", TypeF32, Offset( mVerticalOffset, GuiShapeNameHud ), "Amount to vertically offset the control in relation to the ShapeBase object in focus." );
+   addField( "verticalOffset", TypeF32, Offset( mVerticalOffset, GuiShapeNameHud ), "Amount to vertically offset the control in relation to the ShapeBase object in focus. Does not effect elements" );
    addField( "distanceFade", TypeF32, Offset( mDistanceFade, GuiShapeNameHud ), "Visibility distance (how far the player must be from the ShapeBase object in focus) for this control to render." );
    endGroup("Misc");
    Parent::initPersistFields();
 }
 
+//----------------------------------------------------------------------------
+/// Primary method for interating with the interal list
+///
+/// This method will add a node to the internal list of elements.
+/// Elements with a lifetime near 100k may not ever fade. Named objects
+/// should be used when either a short or infinite life is not wanted.
+void GuiShapeNameHud::addElement(Point3F pos, String damage, F32 lifeTime, ColorF textColor)
+{
+	// Create the new node and assign its values
+	mElementInfo elementInfo;
+
+	elementInfo.position = pos;
+	elementInfo.damage = damage;
+	elementInfo.color = textColor;
+
+	// Get creation time of this node
+	elementInfo.time = mTime;
+
+	// Add it to the element list
+	mElementList.push_front(elementInfo);
+}
+
+//----------------------------------------------------------------------------
+/// Timer used when calculating node age
+///
+/// 100k lifetime issue is caused by the intentional timer rollover.
+void GuiShapeNameHud::advanceTime(F32 timeDelta)
+{
+	// Advance the timer
+	mTime += timeDelta;
+
+	// Roll the timer back after it reaches a certain value.
+	// Might be unnecessary.
+	if (mTime > 100000)
+		mTime = 100000 - mTime;
+}
 
 //----------------------------------------------------------------------------
 /// Core rendering method for this control.
@@ -267,13 +338,76 @@ void GuiShapeNameHud::onRender( Point2I, const RectI &updateRect)
                1.0 - (shapeDist - fadeDistance) / (visDistance - fadeDistance);
 
             // Render the shape's name
-            drawName(Point2I((S32)projPnt.x, (S32)projPnt.y),shape->getShapeName(),opacity);
+            drawName(Point2I((S32)projPnt.x, (S32)projPnt.y),shape->getShapeName(),opacity, mTextColor);
          }
       }
    }
 
-   // Restore control object collision
-   control->enableCollision();
+	// Check to see if there is anything in our internal list. Iterate through it and render
+	// the node contents if so.
+	if (mElementList.size() > 0)
+	{
+		for (std::list<mElementInfo>::iterator i = mElementList.begin(); i != mElementList.end(); ++i)
+		{
+			// Get the node info
+			mElementInfo testInfo = *i;
+			Point3F position = testInfo.position;
+			String damage = testInfo.damage;
+
+			VectorF shapeDir = position - camPos;
+
+			// Test to see if it's in range
+			F32 shapeDist = shapeDir.lenSquared();
+			if (shapeDist == 0 || shapeDist > visDistanceSqr)
+				continue;
+			shapeDist = mSqrt(shapeDist);
+
+			// Test to see if it's within our viewcone, this test doesn't
+			// actually match the viewport very well, should consider
+			// projection and box test.
+			shapeDir.normalize();
+			F32 dot = mDot(shapeDir, camDir);
+			if (dot < camFovCos)
+				continue;
+
+			// Test to see if it's behind something, and we want to
+			// ignore anything it's mounted on when we run the LOS.
+			RayInfo infor;
+
+			bool los = !gClientContainer.castRay(camPos, position, losMask, &infor);
+
+			if (!los)
+				continue;
+
+			// Project the shape pos into screen space and calculate
+			// the distance opacity used to fade the labels into the
+			// distance.
+			Point3F projPnt;
+			if (!parent->project(position, &projPnt))
+				continue;
+			F32 opacity = (shapeDist < fadeDistance) ? 1.0 :
+				1.0 - (shapeDist - fadeDistance) / (visDistance - fadeDistance);
+
+			// Render the elements's string
+			drawName(Point2I((S32)projPnt.x, (S32)projPnt.y), damage, opacity, testInfo.color);
+
+			// Check the nodes age while we are here.
+			F32 timeDelta = mTime - testInfo.time;
+
+			// Is the node is older then its lifetime, remove it
+			if (timeDelta > testInfo.lifeTime)
+				mElementList.erase(i);
+
+			// If the node age is negative, the timer rolled over. Adjust the lifetime check
+			// This check will fail if the node has a long lifetime. Elements were not with
+			// persistence in mind.
+			else if (timeDelta < 0 && (mTime + 100000 - testInfo.time) > testInfo.lifeTime)
+				mElementList.erase(i);
+		}
+	}
+
+	// Restore control object collision
+	control->enableCollision();
 
    // Border last
    if (mShowFrame)
@@ -291,7 +425,7 @@ void GuiShapeNameHud::onRender( Point2I, const RectI &updateRect)
 ///                  specified y position.)
 /// @param   name    String name to display.
 /// @param   opacity Opacity of name (a fraction).
-void GuiShapeNameHud::drawName(Point2I offset, const char *name, F32 opacity)
+void GuiShapeNameHud::drawName(Point2I offset, const char *name, F32 opacity, ColorF color)
 {
    F32 width = mProfile->mFont->getStrWidth((const UTF8 *)name) + mLabelPadding.x * 2;
    F32 height = mProfile->mFont->getHeight() + mLabelPadding.y * 2;
@@ -308,13 +442,41 @@ void GuiShapeNameHud::drawName(Point2I offset, const char *name, F32 opacity)
       drawUtil->drawRectFill(RectI(offset, extent), mLabelFillColor);
 
    // Deal with opacity and draw.
-   mTextColor.alpha = opacity;
-   drawUtil->setBitmapModulation(mTextColor);
+	color.alpha = opacity;
+	drawUtil->setBitmapModulation(color);
    drawUtil->drawText(mProfile->mFont, offset + mLabelPadding, name);
    drawUtil->clearBitmapModulation();
 
    // Border last
    if (mShowLabelFrame)
       drawUtil->drawRect(RectI(offset, extent), mLabelFrameColor);
+}
+
+DefineEngineMethod(GuiShapeNameHud, addElement, bool, (Point3F pos, String damage, F32 lifeTime, ColorF inColor), (F32 (3), ColorF(1, 0, 0, 1)),
+	"@brief Creates a floating text element at the specified location.\n\n"
+	"Will return true if successfull, false if otherwise. A position and name must be provided. Extremely long lived elements may never fade"
+	"When a color but no lifetime is provided, (,\"\",)can be used in place of (,,) to avoid torquescript warnings.\n")
+{
+	if (!(lifeTime > 0) || damage.isEmpty())
+		return false;
+
+	object->addElement(pos, damage, lifeTime, inColor);
+	return true;
+}
+
+DefineEngineMethod(GuiShapeNameHud, getElementCount, S32, (void),,
+	"@brief Counts the number of elements on screen.\n\n"
+	"Counts the number of active elements. Used for metrics and debugging"
+	"Does not count object names.\n")
+{
+	return object->getElementCount();
+}
+
+DefineEngineMethod(GuiShapeNameHud, clearElements, void, (void),,
+	"@brief Clears the element list.\n\n"
+	"Clears all indicator elements from the guiShapeNameHud"
+	"Will not clear names originating from objects.\n")
+{
+	object->clearElements();
 }
 
