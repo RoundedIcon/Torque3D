@@ -224,11 +224,12 @@ void GuiShapeNameHud::advanceTime(F32 timeDelta)
 /// Core rendering method for this control.
 ///
 /// This method scans through all the current client ShapeBase objects.
-/// If one is named, it displays the name and damage information for it.
+/// If one is named, it displays the for it. Elements from the internal
+/// list will be rendered at their defined points.
 ///
 /// Information is offset from the center of the object's bounding box,
 /// unless the object is a PlayerObjectType, in which case the eye point
-/// is used.
+/// is used. Elements are rendered with no offset.
 ///
 /// @param   updateRect   Extents of control.
 void GuiShapeNameHud::onRender( Point2I, const RectI &updateRect)
