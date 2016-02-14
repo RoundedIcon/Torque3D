@@ -66,7 +66,6 @@ class GuiShapeNameHud : public GuiTickCtrl{
    Point2I  mLabelPadding;
 
 	// element data
-	F32 mDefaultLifetime;
 	F32 mTime;
 
 	struct mElementInfo
@@ -87,7 +86,7 @@ protected:
 	void advanceTime(F32 timeDelta);
 
 public:
-   GuiShapeNameHud();
+	GuiShapeNameHud();
 
 	void addElement(Point3F pos, String damage, F32 lifeTime, ColorF textColor);
 
@@ -159,7 +158,6 @@ GuiShapeNameHud::GuiShapeNameHud()
    mDistanceFade = 0.1f;
 	mLabelPadding.set(0, 0);
 	mTime = 0;
-	mDefaultLifetime = 3;
 }
 
 void GuiShapeNameHud::initPersistFields()
@@ -198,6 +196,7 @@ void GuiShapeNameHud::addElement(Point3F pos, String damage, F32 lifeTime, Color
 	elementInfo.position = pos;
 	elementInfo.damage = damage;
 	elementInfo.color = textColor;
+	elementInfo.lifeTime = lifeTime;
 
 	// Get creation time of this node
 	elementInfo.time = mTime;
@@ -457,8 +456,11 @@ DefineEngineMethod(GuiShapeNameHud, addElement, bool, (Point3F pos, String damag
 	"Will return true if successfull, false if otherwise. A position and name must be provided. Extremely long lived elements may never fade"
 	"When a color but no lifetime is provided, (,\"\",)can be used in place of (,,) to avoid torquescript warnings.\n")
 {
-	if (!(lifeTime > 0) || damage.isEmpty())
+	if (damage.isEmpty())
 		return false;
+
+	if (!(lifeTime > 0))
+		lifeTime = 3;
 
 	object->addElement(pos, damage, lifeTime, inColor);
 	return true;
