@@ -1,0 +1,28 @@
+<Entity
+    scale="1 1 1"
+    class="RigidBodyTest"
+    canSave="true"
+    canSaveDynamicFields="true"
+    position="-7.38504 1.61157 1.3045"
+    rotation="0 -0 -0">
+    <StaticMesh
+        componentType="Render"
+        friendlyName="Static Mesh(Component)"
+        description="Causes the object to render a non-animating 3d shape using the file provided."
+        networked="true"
+        enabled="true"
+        shapeName="art/actors/playerBox.dae" />
+    <CollisionComponent
+        friendlyName="Collision(Component)"
+        networked="false"
+        enabled="true"
+        CollisionType="Bounds"
+        LineOfSightType="Collision Mesh"
+        DecalType="Collision Mesh"
+        CollisionMeshPrefix="Collision"
+        BlockCollisions="true" />
+    <RigidBodyComponent
+        friendlyName="RigidBody(Component)"
+        networked="false"
+        enabled="true" />
+</Entity>

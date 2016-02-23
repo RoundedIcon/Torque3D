@@ -1,0 +1,5 @@
+<AnimationAsset
+    AssetName="BoxPlayer_ForwardRun"
+    fileName="data/SpectatorGameplay/art/characters/playerBox_run.dae"
+    DefaultSequenceName="ForwardRun"
+    Animation="ForwardSprint "/>

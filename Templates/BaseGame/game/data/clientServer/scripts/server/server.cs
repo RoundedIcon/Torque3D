@@ -171,6 +171,12 @@ function onServerCreated()
    // GameStartTime is the sim time the game started. Used to calculated
    // game elapsed time.
    $Game::StartTime = 0;
+   
+   //ensure the physics are running
+   if(!physicsPluginPresent())
+   {
+      physicsInit();  
+   }
 
    // Create the server physics world.
    physicsInitWorld( "server" );

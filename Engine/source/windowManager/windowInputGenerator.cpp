@@ -23,7 +23,7 @@
 #include "windowManager/windowInputGenerator.h"
 #include "windowManager/platformWindow.h"
 #include "sim/actionMap.h"
-#include "component/interfaces/IProcessInput.h"
+#include "interfaces/IProcessInput.h"
 
 
 extern InputModifiers convertModifierBits(const U32 in);

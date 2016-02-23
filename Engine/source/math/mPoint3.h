@@ -1008,6 +1008,11 @@ inline F64 mDot(const Point3D &p1, const Point3D &p2)
    return (p1.x*p2.x + p1.y*p2.y + p1.z*p2.z);
 }
 
+inline F32 mDotPerp(const Point3F &p1, const Point3F &p2)
+{
+   return p1.x*p2.y - p2.x*p1.y - p1.z*p2.z;
+}
+
 inline void mCross(const Point3F &a, const Point3F &b, Point3F *res)
 {
    res->x = (a.y * b.z) - (a.z * b.y);

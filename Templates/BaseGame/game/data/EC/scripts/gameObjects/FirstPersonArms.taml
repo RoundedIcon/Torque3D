@@ -1,0 +1,16 @@
+<Entity
+    scale="1 1 1"
+    isSelectionEnabled="false"
+    class="FirstPersonArms"
+    canSave="true"
+    canSaveDynamicFields="true"
+    position="0 0 0"
+    rotation="0 0 0">
+    <MeshComponent
+        componentType="Render"
+        friendlyName="Mesh Component"
+        description="Causes the object to render a non-animating 3d shape using the file provided."
+        networked="true"
+        enabled="true"
+        MeshAsset="EC:playerArms" />
+</Entity>

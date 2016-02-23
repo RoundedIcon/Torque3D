@@ -28,7 +28,7 @@ createCanvas($appName);
 exec("core/console/main.cs");
 
 // Init the physics plugin.
-physicsInit();
+physicsInit("Bullet");
 
 sfxStartup();
 

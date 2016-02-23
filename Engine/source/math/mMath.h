@@ -49,4 +49,8 @@
 #include "math/mEase.h"
 #endif
 
+#ifndef _MROTATION_H_
+#include "math/mRotation.h"
+#endif
+
 #endif //_MMATH_H_

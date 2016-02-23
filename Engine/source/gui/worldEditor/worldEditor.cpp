@@ -47,7 +47,8 @@
 #include "platform/typetraits.h"
 #include "T3D/prefab.h"
 #include "math/mEase.h"
-
+#include "T3D/Components/Component.h"
+#include "T3D/Entity.h"
 
 
 IMPLEMENT_CONOBJECT( WorldEditor );

@@ -1,0 +1,33 @@
+<Entity
+    scale="1 1 1"
+    class="ScriptedTriggerObject"
+    canSave="true"
+    canSaveDynamicFields="true"
+    position="-9.16126 3.09184 -15.6673"
+    rotation="0 0 0">
+    <CollisionComponent
+        friendlyName="Collision(Component)"
+        networked="false"
+        enabled="true"
+        collisionType="Bounds"
+        LineOfSightType="Collision Mesh"
+        decalType="Collision Mesh"
+        CollisionMeshPrefix="Collision"
+        BlockCollisions="false" />
+    <TriggerComponent
+        componentType="Trigger"
+        friendlyName="Trigger"
+        description="Calls trigger events when a client starts and stops seeing it. Also ticks while visible to clients."
+        networked="false"
+        enabled="true"
+        visibile="false"
+        onEnterViewCmd=""
+        onExitViewCmd="" />
+    <VisibilityTriggerComponent
+        componentType="Trigger"
+        friendlyName="Visibility Trigger"
+        description="Calls trigger events when a client starts and stops seeing it. Also ticks while visible to clients."
+        networked="false"
+        enabled="true"
+        visibile="true" />
+</Entity>

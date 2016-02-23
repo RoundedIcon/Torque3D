@@ -36,7 +36,7 @@
 #include "math/mRandom.h"
 #include "math/mEase.h"
 #include "math/mathUtils.h"
-
+#include "math/mRotation.h"
 #include "core/strings/stringUnit.h"
 
 IMPLEMENT_SCOPE( MathTypes, Math,, "" );
@@ -113,7 +113,14 @@ IMPLEMENT_STRUCT( EaseF,
    EaseF, MathTypes,
    "" )
 END_IMPLEMENT_STRUCT;
-
+IMPLEMENT_STRUCT(RotationF,
+   RotationF, MathTypes,
+   "")
+   FIELD(x, x, 1, "X coordinate.")
+   FIELD(y, y, 1, "Y coordinate.")
+   FIELD(z, z, 1, "Z coordinate.")
+   FIELD(w, w, 1, "W coordinate.")
+END_IMPLEMENT_STRUCT;
 
 //-----------------------------------------------------------------------------
 // TypePoint2I
@@ -572,6 +579,65 @@ ConsoleSetType( TypeEaseF )
    }
 }
 
+//-----------------------------------------------------------------------------
+// TypeRotationF
+//-----------------------------------------------------------------------------
+ConsoleType(RotationF, TypeRotationF, RotationF, "")
+//ImplementConsoleTypeCasters( TypeRotationF, RotationF )
+
+ConsoleGetType(TypeRotationF)
+{
+   RotationF *pt = (RotationF *)dptr;
+   static const U32 bufSize = 256;
+   char* returnBuffer = Con::getReturnBuffer(bufSize);
+
+   if (pt->mRotationType == RotationF::AxisAngle)
+   {
+      dSprintf(returnBuffer, bufSize, "%g %g %g %g", pt->x, pt->y, pt->z, mRadToDeg(pt->w));
+   }
+   else
+   {
+      //we're going to assume that when operating in script we'll want to use eulers with degrees.
+      dSprintf(returnBuffer, bufSize, "%g %g %g", mRadToDeg(pt->x), mRadToDeg(pt->y), mRadToDeg(pt->z));
+   }
+
+   return returnBuffer;
+}
+
+ConsoleSetType(TypeRotationF)
+{
+   if (argc == 1)
+   {
+      U32 elements = StringUnit::getUnitCount(argv[0], " \t\n");
+      if (elements == 3)
+      {
+         dSscanf(argv[0], "%g %g %g", &((RotationF *)dptr)->x, &((RotationF *)dptr)->y, &((RotationF *)dptr)->z);
+         ((RotationF *)dptr)->x = mDegToRad(((RotationF *)dptr)->x);
+         ((RotationF *)dptr)->y = mDegToRad(((RotationF *)dptr)->y);
+         ((RotationF *)dptr)->z = mDegToRad(((RotationF *)dptr)->z);
+         ((RotationF *)dptr)->w = 1;
+
+         ((RotationF *)dptr)->mRotationType = RotationF::Euler;
+      }
+      else
+      {
+         dSscanf(argv[0], "%g %g %g %g", &((RotationF *)dptr)->x, &((RotationF *)dptr)->y, &((RotationF *)dptr)->z, &((RotationF *)dptr)->w);
+         ((RotationF *)dptr)->w = mDegToRad(((RotationF *)dptr)->w);
+
+         ((RotationF *)dptr)->mRotationType = RotationF::AxisAngle;
+      }
+   }
+   else if (argc == 3)
+   {
+      ((RotationF *)dptr)->set(dAtof(argv[0]), dAtof(argv[1]), dAtof(argv[2]), RotationF::Degrees);
+   }
+   else if (argc == 4)
+   {
+      ((RotationF *)dptr)->set(dAtof(argv[0]), dAtof(argv[1]), dAtof(argv[2]), dAtof(argv[3]), RotationF::Degrees);
+   }
+   else
+      Con::printf("RotationF must be set as { x, y, z, w } or \"x y z w\"");
+}
 
 //-----------------------------------------------------------------------------
 
@@ -1054,4 +1120,31 @@ DefineConsoleFunction(getRandom, F32, (S32 a, S32 b), (S32_MAX, S32_MAX),
    return gRandGen.randF();
 }
 
+DefineConsoleFunction(VectorPerpDot, F32, (VectorF a, VectorF b), ,
+   "Calculcate the cross product of two vectors.\n"
+   "@param a The first vector.\n"
+   "@param b The second vector.\n"
+   "@return The cross product @a x @a b.\n\n"
+   "@tsexample\n"
+   "//-----------------------------------------------------------------------------\n"
+   "//\n"
+   "// VectorCross( %a, %b );\n"
+   "//\n"
+   "// The cross product of vector a, (ax, ay, az), and vector b, (bx, by, bz), is\n"
+   "//\n"
+   "//     a x b = ( ( ay * bz ) - ( az * by ), ( az * bx ) - ( ax * bz ), ( ax * by ) - ( ay * bx ) )\n"
+   "//\n"
+   "//-----------------------------------------------------------------------------\n\n"
+
+   "%a = \"1 1 0\";\n"
+   "%b = \"2 0 1\";\n\n"
+
+   "// %r = \"( ( 1 * 1 ) - ( 0 * 0 ), ( 0 * 2 ) - ( 1 * 1 ), ( 1 * 0 ) - ( 1 * 2 ) )\";\n"
+   "// %r = \"1 -1 -2\";\n"
+   "%r = VectorCross( %a, %b );\n"
+   "@endtsexample\n\n"
+   "@ingroup Vectors")
+{
+   return mDotPerp(a, b);
+}
 //------------------------------------------------------------------------------
