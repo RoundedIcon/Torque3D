@@ -277,81 +277,48 @@ void Entity::processTick(const Move* move)
 {
    if (!isHidden())
    {
-      if (isMounted()) 
-      {
-         MatrixF mat;
-         mMount.object->getMountTransform(mMount.node, mMount.xfm, &mat);
-
-         Parent::setTransform(mat);
-         Parent::setRenderTransform(mat);
-      }
-
-      /*if (isMounted())
-      {
-         MatrixF mat;
-         //Use transform from mount
-         mMount.object->getMountTransform(mMount.node, mMount.xfm, &mat);
-
-         MatrixF offset = mRot.asMatrixF();
-         offset.setPosition(mPos);
-
-         mat.mul(offset);
-
-         Point3F testPos = mat.getPosition();
-         RotationF testRot = RotationF(mat);
-
-         //mRot = rot.asEulerF(RotationF::Degrees);
-
-         Parent::setTransform(mat);
-
-         //RotationF addRot = mRot + RotationF(mMount.object->getTransform());
-         //MatrixF transf = addRot.asMatrixF();
-         //transf.setPosition(mPos + mMount.object->getPosition());
-
-         //Parent::setTransform(transf);
-      }*/
-
-      //
       if (mDelta.warpCount < mDelta.warpTicks)
       {
-         /*mDelta.warpCount++;
+         mDelta.warpCount++;
 
          // Set new pos.
          mObjToWorld.getColumn(3, &mDelta.pos);
          mDelta.pos += mDelta.warpOffset;
          mDelta.rot[0] = mDelta.rot[1];
          mDelta.rot[1].interpolate(mDelta.warpRot[0], mDelta.warpRot[1], F32(mDelta.warpCount) / mDelta.warpTicks);
-         
-         MatrixF trans;
-         mDelta.rot[1].setMatrix(&trans);
-         trans.setPosition(mDelta.pos);
-
-         setTransform(trans);
+         setTransform(mDelta.pos, mDelta.rot[1]);
 
          // Pos backstepping
          mDelta.posVec.x = -mDelta.warpOffset.x;
          mDelta.posVec.y = -mDelta.warpOffset.y;
-         mDelta.posVec.z = -mDelta.warpOffset.z;*/
+         mDelta.posVec.z = -mDelta.warpOffset.z;
       }
-      else 
+      else
       {
-         // If there is no move, the player is either an
-         // unattached player on the server, or a player's
-         // client ghost.
-         if (!move) 
+         if (isMounted())
          {
-            if (isGhost()) 
+            MatrixF mat;
+            mMount.object->getMountTransform(mMount.node, mMount.xfm, &mat);
+            Parent::setTransform(mat);
+            Parent::setRenderTransform(mat);
+         }
+         else
+         {
+            if (!move)
             {
-               // If we haven't run out of prediction time,
-               // predict using the last known move.
-               if (mPredictionCount-- <= 0)
-                  return;
+               if (isGhost())
+               {
+                  // If we haven't run out of prediction time,
+                  // predict using the last known move.
+                  if (mPredictionCount-- <= 0)
+                     return;
 
-               move = &mDelta.move;
-            }
-            else
-            {
-               move = &NullMove;
+                  move = &mDelta.move;
+               }
+               else
+               {
+                  move = &NullMove;
+               }
             }
          }
       }
@@ -412,66 +379,20 @@ void Entity::advanceTime(F32 dt)
 
 void Entity::interpolateTick(F32 dt)
 {
-   Parent::interpolateTick(dt);
-
-   bool isServer = isServerObject();
-
-   if (isMounted()) 
+   if (dt == 0.0f)
    {
-      MatrixF mat;
-      mMount.object->getRenderMountTransform(dt, mMount.node, mMount.xfm, &mat);
-      Parent::setRenderTransform(mat);
+      setRenderTransform(mDelta.pos, mDelta.rot[1]);
+   }
+   else
+   {
+      QuatF rot;
+      rot.interpolate(mDelta.rot[1], mDelta.rot[0], dt);
+      Point3F pos = mDelta.pos + mDelta.posVec * dt;
+
+      setRenderTransform(pos, rot);
    }
 
-   /*if (isMounted()) {
-      MatrixF mat;
-      //Use transform from mount
-      /*mMount.object->getRenderMountTransform(dt, mMount.node, mMount.xfm, &mat);
-
-      MatrixF offset = mRot.asMatrixF();
-      offset.setPosition(mPos);
-
-      mat.mul(offset);
-
-      Parent::setRenderTransform(mat);*/
-      /*RotationF addRot = mRot + RotationF(mMount.object->getTransform());
-      MatrixF transf = addRot.asMatrixF();
-      transf.setPosition(mPos + mMount.object->getPosition());
-
-      setRenderTransform(transf);
-   }*/
-
-
-   if (!isHidden())
-   {
-      if (dt == 0.0f)
-      {
-         //setRenderTransform(mDelta.pos, mDelta.rot[1]);
-         MatrixF trans;
-         mDelta.rot[1].setMatrix(&trans);
-         trans.setPosition(mDelta.pos);
-
-         setRenderTransform(trans);
-      }
-      else
-      {
-         QuatF rot;
-         rot.interpolate(mDelta.rot[1], mDelta.rot[0], dt);
-         Point3F pos = mDelta.pos + mDelta.posVec * dt;
-
-         MatrixF tmp;
-         rot.setMatrix(&tmp);
-
-         RotationF interRot = RotationF(tmp);
-
-
-         setRenderTransform(pos, interRot);
-      }
-
-      Point3F pos = mRenderObjToWorld.getPosition();
-
-      mDelta.dt = dt;
-   }
+   mDelta.dt = dt;
 }
 
 //Render
@@ -834,11 +755,9 @@ void Entity::setTransform(Point3F position, RotationF rotation)
       mPos = position;
       mRot = rotation;
 
-      //get the difference
-      RotationF subRot = RotationF(mMount.object->getTransform()) - mRot;
-
-      MatrixF transf = subRot.asMatrixF();
-      transf.setPosition(mMount.object->getPosition() - mPos);
+      RotationF addRot = mRot + RotationF(mMount.object->getTransform());
+      MatrixF transf = addRot.asMatrixF();
+      transf.setPosition(mPos + mMount.object->getPosition());
 
       Parent::setTransform(transf);
 
@@ -846,6 +765,14 @@ void Entity::setTransform(Point3F position, RotationF rotation)
    }
    else
    {
+      /*MatrixF newMat, imat, xmat, ymat, zmat;
+      Point3F radRot = Point3F(mDegToRad(rotation.x), mDegToRad(rotation.y), mDegToRad(rotation.z));
+      xmat.set(EulerF(radRot.x, 0, 0));
+      ymat.set(EulerF(0.0f, radRot.y, 0.0f));
+      zmat.set(EulerF(0, 0, radRot.z));
+      imat.mul(zmat, xmat);
+      newMat.mul(imat, ymat);*/
+
       MatrixF newMat = rotation.asMatrixF();
 
       newMat.setColumn(3, position);
@@ -854,10 +781,32 @@ void Entity::setTransform(Point3F position, RotationF rotation)
       mRot = rotation;
 
       setMaskBits(TransformMask);
+      //if (isServerObject())
+      //   setMaskBits(TransformMask);
+
+      //setTransform(temp);
+
+      // This test is a bit expensive so turn it off in release.   
+#ifdef TORQUE_DEBUG
+      //AssertFatal( mat.isAffine(), "SceneObject::setTransform() - Bad transform (non affine)!" );
+#endif
+
+      //PROFILE_SCOPE(Entity_setTransform);
+
+      // Update the transforms.
 
       Parent::setTransform(newMat);
 
       onTransformSet.trigger(&newMat);
+
+      /*mObjToWorld = mWorldToObj = newMat;
+      mWorldToObj.affineInverse();
+      // Update the world-space AABB.
+      resetWorldBox();
+      // If we're in a SceneManager, sync our scene state.
+      if (mSceneManager != NULL)
+      mSceneManager->notifyObjectDirty(this);
+      setRenderTransform(newMat);*/
    }
 }
 
@@ -887,7 +836,7 @@ void Entity::setRenderTransform(Point3F position, RotationF rotation)
 
       mPos = position;
       mRot = rotation;
-      
+
       Parent::setRenderTransform(newMat);
 
       onTransformSet.trigger(&newMat);

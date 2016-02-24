@@ -543,7 +543,7 @@ inline void RotationF::set(QuatF _quat)
 {
    //Taking in a quat assumes radians (check on this?)
    AngAxisF tempAA;
-   _quat.set(tempAA);
+   tempAA.set(_quat);
 
    x = tempAA.axis.x;
    y = tempAA.axis.y;

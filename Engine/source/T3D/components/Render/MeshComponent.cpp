@@ -361,12 +361,14 @@ void MeshComponent::prepRenderImage( SceneRenderState *state )
    query.init(mOwner->getWorldSphere());
    rdata.setLightQuery(&query);
 
-   MatrixF mat = mOwner->getTransform();
+   MatrixF mat = mOwner->getRenderTransform();
    Point3F renderPos = mat.getPosition();
    EulerF renderRot = mat.toEuler();
-   Point3F renderScale = mat.getScale();
    mat.scale(objScale);
    GFX->setWorldMatrix(mat);
+
+   if (mOwner->isMounted())
+      bool tmp = true;
 
    //mShapeInstance->animate();
    mShapeInstance->render(rdata);
