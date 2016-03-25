@@ -15,6 +15,7 @@
         friendlyName="Collision(Component)"
         networked="false"
         enabled="true"
+		  fieldName="collision"
         collisionType="Bounds"
         LineOfSightType="Collision Mesh"
         decalType="Collision Mesh"
@@ -26,6 +27,7 @@
         description="Simple physics behavior that allows gravity and impulses."
         networked="false"
         enabled="true"
+		  fieldName="phys"
         gravity="0 0 -9"
         velocity="0 0 0"
         isStatic="false" />
@@ -35,14 +37,16 @@
         description="Causes the object to render a non-animating 3d shape using the file provided."
         networked="true"
         enabled="true"
+		  fieldName="mesh"
         MeshAsset="EC:playerBox" />
     <Component
         networked="false"
         enabled="true"
         class="FPSControls" />
     <CameraComponent
-        networked="false"
+        networked="true"
         enabled="true"
+		  fieldName="cam"
         FOV="80"
         MinFOV="5"
         MaxFOV="175"
@@ -55,14 +59,16 @@
         orbitDistance="5"
         maxPitchAngle="70"
         minPitchAngle="-70"
-        networked="false"
-        enabled="true" />
+        networked="true"
+        enabled="true"
+        fieldName="camArm" />
     <!--<StateMachineComponent
         componentType="Game"
         friendlyName="State Machine"
         description="A generic state machine."
         networked="true"
         enabled="true"
+		  fieldName="stateMachine"
         stateStartTime="0"
         stateTime="0"
 		stateMachineFile="scripts/PlayerAnimSM.xml"/>-->
@@ -71,6 +77,7 @@
         friendlyName="Animation Component"
         description="An animation component"
         networked="true"
+		  fieldName="animation"
         enabled="true"/>
     <SpotLight
         range="10"
