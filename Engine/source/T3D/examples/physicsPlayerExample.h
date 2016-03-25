@@ -152,6 +152,10 @@ class PhysicsPlayerExample : public GameBase
 
    } mContactInfo;
 
+	Point3F oldPos;
+	VectorF oldVel;
+	S32 updateCounter;
+
 public:
    PhysicsPlayerExample();
    virtual ~PhysicsPlayerExample();

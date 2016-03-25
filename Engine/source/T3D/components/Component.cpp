@@ -34,6 +34,7 @@ Component::Component()
    mComponentGroup = StringTable->lookup("");
    mNetworkType = StringTable->lookup("");
    mTemplateName = StringTable->lookup("");
+	mComponentFieldName = StringTable->lookup("");
    //mDependency = StringTable->lookup("");
 
    mNetworked = false;
@@ -74,13 +75,14 @@ IMPLEMENT_CO_NETOBJECT_V1(Component);
 void Component::initPersistFields()
 {
    addGroup("Component");
-   addField("componentType", TypeCaseString, Offset(mComponentType, Component), "The type of behavior.", AbstractClassRep::FieldFlags::FIELD_HideInInspectors);
-   addField("networkType", TypeCaseString, Offset(mNetworkType, Component), "The type of behavior.", AbstractClassRep::FieldFlags::FIELD_HideInInspectors);
-   addField("friendlyName", TypeCaseString, Offset(mFriendlyName, Component), "Human friendly name of this behavior", AbstractClassRep::FieldFlags::FIELD_HideInInspectors);
+		addField("componentType", TypeCaseString, Offset(mComponentType, Component), "The type of behavior.", AbstractClassRep::FieldFlags::FIELD_HideInInspectors);
+		addField("networkType", TypeCaseString, Offset(mNetworkType, Component), "The type of behavior.", AbstractClassRep::FieldFlags::FIELD_HideInInspectors);
+		addField("friendlyName", TypeCaseString, Offset(mFriendlyName, Component), "Human friendly name of this behavior", AbstractClassRep::FieldFlags::FIELD_HideInInspectors);
       addProtectedField("description", TypeCaseString, Offset(mDescription, Component), &setDescription, &getDescription,
          "The description of this behavior which can be set to a \"string\" or a fileName\n", AbstractClassRep::FieldFlags::FIELD_HideInInspectors);
 
       addField("networked", TypeBool, Offset(mNetworked, Component), "Is this behavior ghosted to clients?", AbstractClassRep::FieldFlags::FIELD_HideInInspectors);
+		addField("fieldName", TypeString, Offset(mComponentFieldName, Component), "aaaaaaaaaaaaaaaaaa", AbstractClassRep::FieldFlags::FIELD_HideInInspectors);
 
       //This is a hacky stand-in until we get proper serialization
       //this lets us mark if it's our template/reference component and, if so, not network it down
@@ -175,6 +177,8 @@ bool Component::onAdd()
 
    setMaskBits(UpdateMask);
 
+	setMaskBits(NamespaceMask);
+
    //Sim::gComponentSet->addObject(this);
 
    //force the callback
@@ -260,7 +264,9 @@ void Component::setOwner(Entity* owner)
    }
 
    if (isServerObject())
+	{
       setMaskBits(OwnerMask);
+	}
 }
 
 void Component::componentAddedToOwner(Component *comp)
@@ -299,6 +305,10 @@ U32 Component::packUpdate(NetConnection *con, U32 mask, BitStream *stream)
             stream->writeFlag(true);
             stream->writeFlag(true);
             stream->writeInt(ghostIndex, NetConnection::GhostIdBitSize);
+				if (stream->writeFlag(mComponentFieldName != ""))
+				{
+					stream->writeString(mComponentFieldName);
+				}
          }
       }
       else
@@ -309,6 +319,19 @@ U32 Component::packUpdate(NetConnection *con, U32 mask, BitStream *stream)
    }
    else
       stream->writeFlag(false);
+
+	if (stream->writeFlag(mask & NamespaceMask))
+	{
+		const char* name = getName();
+		if (stream->writeFlag(name && name[0]))
+			stream->writeString(String(name));
+
+		if (stream->writeFlag(mSuperClassName && mSuperClassName[0]))
+			stream->writeString(String(mSuperClassName));
+
+		if (stream->writeFlag(mClassName && mClassName[0]))
+			stream->writeString(String(mClassName));
+	}
 
    if (stream->writeFlag(mask & EnableMask))
    {
@@ -343,8 +366,17 @@ void Component::unpackUpdate(NetConnection *con, BitStream *stream)
          S32 gIndex = stream->readInt(NetConnection::GhostIdBitSize);
 
          Entity *e = dynamic_cast<Entity*>(con->resolveGhost(gIndex));
+			if (stream->readFlag())
+			{
+				char buff[255];
+				stream->readString(buff);
+				mComponentFieldName = buff;
+			}
          if (e)
+			{
             e->addComponent(this);
+				linkNamespaces();
+			}
       }
       else
       {
@@ -352,6 +384,30 @@ void Component::unpackUpdate(NetConnection *con, BitStream *stream)
          setOwner(NULL);
       }
    }
+
+	if (stream->readFlag())
+	{
+		if (stream->readFlag())
+		{
+			char name[256];
+			stream->readString(name);
+			assignName(name);
+		}
+		if (stream->readFlag())
+		{
+			char superClassname[256];
+			stream->readString(superClassname);
+			mSuperClassName = superClassname;
+		}
+		if (stream->readFlag())
+		{
+			char classname[256];
+			stream->readString(classname);
+			mClassName = classname;
+		}
+
+		linkNamespaces();
+	}
 
    if (stream->readFlag())
    {
@@ -409,7 +465,7 @@ void Component::packToStream(Stream &stream, U32 tabStop, S32 behaviorID, U32 fl
 
 void Component::processTick()
 {
-   if (isServerObject() && mEnabled)
+   if (/*isServerObject() &&*/ mEnabled)
    {
       if (mOwner != NULL && isMethod("Update"))
          Con::executef(this, "Update");
@@ -690,7 +746,7 @@ ConsoleMethod(Component, getComponentField, const char *, 3, 3, "(int index) - G
    return buf;
 }
 
-ConsoleMethod(Component, setComponentield, const char *, 3, 3, "(int index) - Gets a Tab-Delimited list of information about a ComponentField specified by Index\n"
+ConsoleMethod(Component, setComponentField, const char *, 3, 3, "(int index) - Gets a Tab-Delimited list of information about a ComponentField specified by Index\n"
    "@param index The index of the behavior\n"
    "@return FieldName, FieldType and FieldDefaultValue, each separated by a TAB character.\n")
 {

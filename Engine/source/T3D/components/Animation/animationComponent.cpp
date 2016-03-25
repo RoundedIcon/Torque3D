@@ -391,7 +391,7 @@ bool AnimationComponent::setThreadSequence(U32 slot, S32 seq, bool reset, bool t
 
    if (seq < MaxSequenceIndex)
    {
-      setMaskBits(-1);
+      //setMaskBits(-1);
       setMaskBits(ThreadMaskN << slot);
       st.sequence = seq;
       st.transition = transition;

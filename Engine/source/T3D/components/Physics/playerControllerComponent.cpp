@@ -167,6 +167,8 @@ void PlayerControllerComponent::componentAddedToOwner(Component *comp)
       updatePhysics();
    }
 
+	mOwner->physics = this;
+
    /*RenderComponentInterface *renderInterface = dynamic_cast<RenderComponentInterface*>(comp);
    if (renderInterface)
    {
@@ -318,7 +320,7 @@ void PlayerControllerComponent::processTick()
 {
    Parent::processTick();
 
-   if (!isServerObject() || !isActive())
+   if (/*!( isServerObject() || mOwner->getControlObject()) ||*/ !isActive())
       return;
 
    //
@@ -353,8 +355,8 @@ void PlayerControllerComponent::processTick()
       mDelta.posVec = mOwner->getPosition();
       mDelta.rot[0] = mOwner->getTransform();
 
-      updateMove();
-      updatePos(TickSec);
+      //updateMove();
+      //updatePos(TickSec);
 
       // Wrap up interpolation info
       mDelta.pos = mOwner->getPosition();
@@ -397,7 +399,7 @@ void PlayerControllerComponent::setTransform(const MatrixF& mat)
 }
 
 //
-void PlayerControllerComponent::updateMove()
+void PlayerControllerComponent::updatedMove()
 {
    if (!PHYSICSMGR)
       return;
@@ -413,170 +415,16 @@ void PlayerControllerComponent::updateMove()
    }
 
    // Is waterCoverage high enough to be 'swimming'?
+
+   bool swimming = mOwner->getContainerInfo().waterCoverage > 0.65f/* && canSwim()*/;
+
+   if (swimming != mSwimming)
    {
-      bool swimming = mOwner->getContainerInfo().waterCoverage > 0.65f/* && canSwim()*/;
-
-      if (swimming != mSwimming)
-      {
-         if (!isGhost())
-         {
-            /*if (swimming)
-               onStartSwim_callback(this);
-            else
-               onStopSwim_callback(this);*/
-         }
-
-         mSwimming = swimming;
-      }
+      mSwimming = swimming;
    }
 
    // Update current orientation
-   bool doStandardMove = true;
    GameConnection* con = mOwner->getControllingClient();
-
-#ifdef TORQUE_EXTENDED_MOVE
-   // Work with an absolute rotation from the ExtendedMove class?
-   if (con && con->getControlSchemeAbsoluteRotation())
-   {
-      doStandardMove = false;
-      const ExtendedMove* emove = dynamic_cast<const ExtendedMove*>(move);
-      U32 emoveIndex = smExtendedMoveHeadPosRotIndex;
-      if (emoveIndex >= ExtendedMove::MaxPositionsRotations)
-         emoveIndex = 0;
-
-      if (emove->EulerBasedRotation[emoveIndex])
-      {
-         // Head pitch
-         mHead.x += (emove->rotX[emoveIndex] - mLastAbsolutePitch);
-
-         // Do we also include the relative yaw value?
-         if (con->getControlSchemeAddPitchToAbsRot())
-         {
-            F32 x = move->pitch;
-            if (x > M_PI_F)
-               x -= M_2PI_F;
-
-            mHead.x += x;
-         }
-
-         // Constrain the range of mHead.x
-         while (mHead.x < -M_PI_F)
-            mHead.x += M_2PI_F;
-         while (mHead.x > M_PI_F)
-            mHead.x -= M_2PI_F;
-
-         // Rotate (heading) head or body?
-         if (move->freeLook && ((isMounted() && getMountNode() == 0) || (con && !con->isFirstPerson())))
-         {
-            // Rotate head
-            mHead.z += (emove->rotZ[emoveIndex] - mLastAbsoluteYaw);
-
-            // Do we also include the relative yaw value?
-            if (con->getControlSchemeAddYawToAbsRot())
-            {
-               F32 z = move->yaw;
-               if (z > M_PI_F)
-                  z -= M_2PI_F;
-
-               mHead.z += z;
-            }
-
-            // Constrain the range of mHead.z
-            while (mHead.z < 0.0f)
-               mHead.z += M_2PI_F;
-            while (mHead.z > M_2PI_F)
-               mHead.z -= M_2PI_F;
-         }
-         else
-         {
-            // Rotate body
-            mRot.z += (emove->rotZ[emoveIndex] - mLastAbsoluteYaw);
-
-            // Do we also include the relative yaw value?
-            if (con->getControlSchemeAddYawToAbsRot())
-            {
-               F32 z = move->yaw;
-               if (z > M_PI_F)
-                  z -= M_2PI_F;
-
-               mRot.z += z;
-            }
-
-            // Constrain the range of mRot.z
-            while (mRot.z < 0.0f)
-               mRot.z += M_2PI_F;
-            while (mRot.z > M_2PI_F)
-               mRot.z -= M_2PI_F;
-         }
-         mLastAbsoluteYaw = emove->rotZ[emoveIndex];
-         mLastAbsolutePitch = emove->rotX[emoveIndex];
-
-         // Head bank
-         mHead.y = emove->rotY[emoveIndex];
-
-         // Constrain the range of mHead.y
-         while (mHead.y > M_PI_F)
-            mHead.y -= M_2PI_F;
-      }
-   }
-#endif
-
-   /*if (doStandardMove)
-   {
-      F32 p = move->pitch;
-      if (p > M_PI_F)
-         p -= M_2PI_F;
-      mHead.x = mClampF(mHead.x + p, minLookAngle, maxLookAngle);
-
-      F32 y = move->yaw;
-      if (y > M_PI_F)
-         y -= M_2PI_F;
-
-
-      mRot.z += y;
-      // Rotate the head back to the front, center horizontal
-      // as well if we're controlling another object.
-      mHead.z *= 0.5f;
-      if (mControlObject)
-         mHead.x *= 0.5f;
-
-      // constrain the range of mRot.z
-      while (mRot.z < 0.0f)
-         mRot.z += M_2PI_F;
-      while (mRot.z > M_2PI_F)
-         mRot.z -= M_2PI_F;
-   }
-
-   delta.rot = mRot;
-   delta.rotVec.x = delta.rotVec.y = 0.0f;
-   delta.rotVec.z = prevZRot - mRot.z;
-   if (delta.rotVec.z > M_PI_F)
-      delta.rotVec.z -= M_2PI_F;
-   else if (delta.rotVec.z < -M_PI_F)
-      delta.rotVec.z += M_2PI_F;
-
-   delta.head = mHead;
-   delta.headVec -= mHead;
-   for (U32 i = 0; i<3; ++i)
-   {
-      if (delta.headVec[i] > M_PI_F)
-         delta.headVec[i] -= M_2PI_F;
-      else if (delta.headVec[i] < -M_PI_F)
-         delta.headVec[i] += M_2PI_F;
-   }*/
-
-   MatrixF zRot;
-   zRot.set(EulerF(0.0f, 0.0f, mOwner->getRotation().asEulerF().z));
-
-   // Desired move direction & speed
-   VectorF moveVec;
-   F32 moveSpeed = mInputVelocity.len();
-
-   zRot.getColumn(0, &moveVec);
-   moveVec *= move->x;
-   VectorF tv;
-   zRot.getColumn(1, &tv);
-   moveVec += tv * move->y;
 
    // Acceleration due to gravity
    VectorF acc(mPhysicsWorld->getGravity() * mGravityMod * TickSec);
@@ -593,212 +441,19 @@ void PlayerControllerComponent::updateMove()
    if (mContactInfo.jump)
       mJumpSurfaceNormal = mContactInfo.contactNormal;
 
-   // If we don't have a runSurface but we do have a contactNormal,
-   // then we are standing on something that is too steep.
-   // Deflect the force of gravity by the normal so we slide.
-   // We could also try aligning it to the runSurface instead,
-   // but this seems to work well.
-   if (!mContactInfo.run && !mContactInfo.contactNormal.isZero())
-      acc = (acc - 2 * mContactInfo.contactNormal * mDot(acc, mContactInfo.contactNormal));
+	if (mContactInfo.run)
+		mFalling = false;
+	else
+		mFalling = true;
 
-   // Acceleration on run surface
-   if (mContactInfo.run && !mSwimming)
-   {
-      mContactTimer = 0;
+	F32 waterCoverage = mOwner->getContainerInfo().waterCoverage;
+	Point3F moveInfo(move->x, move->y, move->z);
+	if (getOwner()->isMethod("updateMove"))
+	{
+		Con::executef(getOwner(), "updateMove", moveInfo, acc, mContactInfo.contactNormal, mFalling, waterCoverage, mVelocity);
+	}
 
-      VectorF pv = moveVec;
-
-      // Adjust the player's requested dir. to be parallel
-      // to the contact surface.
-      F32 pvl = pv.len();
-
-      // Convert to acceleration
-      if (pvl)
-         pv *= moveSpeed / pvl;
-      VectorF runAcc = pv - (mVelocity + acc);
-      F32 runSpeed = runAcc.len();
-
-      // Clamp acceleration, player also accelerates faster when
-      // in his hard landing recover state.
-      F32 maxAcc;
-
-      maxAcc = (horizMaxAccel / mMass) * TickSec;
-
-      if (runSpeed > maxAcc)
-         runAcc *= maxAcc / runSpeed;
-
-      acc += runAcc;
-   }
-   else if (!mSwimming && airControl > 0.0f)
-   {
-      VectorF pv;
-      pv = moveVec;
-      F32 pvl = pv.len();
-
-      if (pvl)
-         pv *= moveSpeed / pvl;
-
-      VectorF runAcc = pv - (mVelocity + acc);
-      runAcc.z = 0;
-      runAcc.x = runAcc.x * airControl;
-      runAcc.y = runAcc.y * airControl;
-      F32 runSpeed = runAcc.len();
-
-      // We don't test for sprinting when performing air control
-      F32 maxAcc = (horizMaxAccel / mMass) * TickSec * 0.3f;
-
-      if (runSpeed > maxAcc)
-         runAcc *= maxAcc / runSpeed;
-
-      acc += runAcc;
-
-      // There are no special air control animations 
-      // so... increment this unless you really want to 
-      // play the run anims in the air.
-      mContactTimer++;
-   }
-   else if (mSwimming)
-   {
-      // Remove acc into contact surface (should only be gravity)
-      // Clear out floating point acc errors, this will allow
-      // the player to "rest" on the ground.
-      F32 vd = -mDot(acc, mContactInfo.contactNormal);
-      if (vd > 0.0f) 
-      {
-         VectorF dv = mContactInfo.contactNormal * (vd + 0.002f);
-         acc += dv;
-         if (acc.len() < 0.0001f)
-            acc.set(0.0f, 0.0f, 0.0f);
-      }
-
-      // get the head pitch and add it to the moveVec
-      // This more accurate swim vector calc comes from Matt Fairfax
-      MatrixF xRot, zRot;
-      xRot.set(EulerF(mOwner->getRotation().asEulerF().x, 0, 0));
-      zRot.set(EulerF(0, 0, mOwner->getRotation().asEulerF().z));
-      MatrixF rot;
-      rot.mul(zRot, xRot);
-      rot.getColumn(0, &moveVec);
-
-      moveVec *= move->x;
-      VectorF tv;
-      rot.getColumn(1, &tv);
-      moveVec += tv * move->y;
-      rot.getColumn(2, &tv);
-      moveVec += tv * move->z;
-
-      // Force a 0 move if there is no energy, and only drain
-      // move energy if we're moving.
-      VectorF swimVec = moveVec;
-
-      // If we are swimming but close enough to the shore/ground
-      // we can still have a surface-normal. In this case align the
-      // velocity to the normal to make getting out of water easier.
-
-      moveVec.normalize();
-      F32 isSwimUp = mDot(moveVec, mContactInfo.contactNormal);
-
-      if (!mContactInfo.contactNormal.isZero() && isSwimUp < 0.1f)
-      {
-         F32 pvl = swimVec.len();
-
-         if (pvl)
-         {
-            VectorF nn;
-            mCross(swimVec, VectorF(0.0f, 0.0f, 1.0f), &nn);
-            nn *= 1.0f / pvl;
-            VectorF cv = mContactInfo.contactNormal;
-            cv -= nn * mDot(nn, cv);
-            swimVec -= cv * mDot(swimVec, cv);
-         }
-      }
-
-      F32 swimVecLen = swimVec.len();
-
-      // Convert to acceleration.
-      if (swimVecLen)
-         swimVec *= moveSpeed / swimVecLen;
-      VectorF swimAcc = swimVec - (mVelocity + acc);
-      F32 swimSpeed = swimAcc.len();
-
-      // Clamp acceleration.
-      F32 maxAcc = (horizMaxAccel / mMass) * TickSec;
-      if (swimSpeed > maxAcc)
-         swimAcc *= maxAcc / swimSpeed;
-
-      acc += swimAcc;
-
-      mContactTimer++;
-   }
-   else
-      mContactTimer++;
-
-   // Acceleration from Jumping
-   /*if (move->trigger[sJumpTrigger] && canJump())// !isMounted() && 
-   {
-      // Scale the jump impulse base on maxJumpSpeed
-      F32 zSpeedScale = mVelocity.z;
-      if (zSpeedScale <= mDataBlock->maxJumpSpeed)
-      {
-         zSpeedScale = (zSpeedScale <= mDataBlock->minJumpSpeed) ? 1 :
-            1 - (zSpeedScale - mDataBlock->minJumpSpeed) /
-            (mDataBlock->maxJumpSpeed - mDataBlock->minJumpSpeed);
-
-         // Desired jump direction
-         VectorF pv = moveVec;
-         F32 len = pv.len();
-         if (len > 0)
-            pv *= 1 / len;
-
-         // We want to scale the jump size by the player size, somewhat
-         // in reduced ratio so a smaller player can jump higher in
-         // proportion to his size, than a larger player.
-         F32 scaleZ = (getScale().z * 0.25) + 0.75;
-
-         // Calculate our jump impulse
-         F32 impulse = mDataBlock->jumpForce / getMass();
-
-         if (mDataBlock->jumpTowardsNormal)
-         {
-            // If we are facing into the surface jump up, otherwise
-            // jump away from surface.
-            F32 dot = mDot(pv, mJumpSurfaceNormal);
-            if (dot <= 0)
-               acc.z += mJumpSurfaceNormal.z * scaleZ * impulse * zSpeedScale;
-            else
-            {
-               acc.x += pv.x * impulse * dot;
-               acc.y += pv.y * impulse * dot;
-               acc.z += mJumpSurfaceNormal.z * scaleZ * impulse * zSpeedScale;
-            }
-         }
-         else
-            acc.z += scaleZ * impulse * zSpeedScale;
-
-         mJumpDelay = mDataBlock->jumpDelay;
-         mEnergy -= mDataBlock->jumpEnergyDrain;
-
-         // If we don't have a StandJumpAnim, just play the JumpAnim...
-         S32 seq = (mVelocity.len() < 0.5) ? PlayerData::StandJumpAnim : PlayerData::JumpAnim;
-         if (mDataBlock->actionList[seq].sequence == -1)
-            seq = PlayerData::JumpAnim;
-         setActionThread(seq, true, false, true);
-
-         mJumpSurfaceLastContact = JumpSkipContactsMax;
-      }
-   }
-   else
-   {
-      if (jumpSurface)
-      {
-         if (mJumpDelay > 0)
-            mJumpDelay--;
-         mJumpSurfaceLastContact = 0;
-      }
-      else
-         mJumpSurfaceLastContact++;
-   }*/
-
+	acc = acceler;
    // Add in force from physical zones...
    acc += (mOwner->getContainerInfo().appliedForce / mMass) * TickSec;
 
@@ -854,18 +509,10 @@ void PlayerControllerComponent::updateMove()
    if (!mInWater && mOwner->getContainerInfo().waterCoverage > 0.0f)
    {
       mInWater = true;
-
-      //if (!isGhost())
-     //    onEnterLiquid_callback(this, mWaterCoverage, mLiquidType.c_str());
    }
    else if (mInWater && mOwner->getContainerInfo().waterCoverage <= 0.0f)
    {
       mInWater = false;
-
-      /*if (!isGhost())
-      {
-         onLeaveLiquid_callback(this, mLiquidType.c_str());
-      }*/
    }
 }
 
@@ -1067,8 +714,8 @@ void PlayerControllerComponent::findContact(bool *run, bool *jump, VectorF *cont
 
    mContactInfo.clear();*/
 
-   mContactInfo.contacted = contactObject != NULL;
    mContactInfo.contactObject = contactObject;
+	mContactInfo.contacted = (contactObject != NULL);
 
    if (mContactInfo.contacted)
       mContactInfo.contactNormal = *contactNormal;
@@ -1157,4 +804,29 @@ DefineEngineMethod(PlayerControllerComponent, isContacted, bool, (), ,
    "@note Not all objects that derrive from GameBase have this defined.\n")
 {
    return object->isContacted();
+}
+
+DefineEngineMethod(PlayerControllerComponent, setInputVelocity, void, (Point3F vel), ,
+	"@brief Apply an impulse to this object as defined by a world position and velocity vector.\n\n"
+
+	"@param pos impulse world position\n"
+	"@param vel impulse velocity (impulse force F = m * v)\n"
+	"@return Always true\n"
+
+	"@note Not all objects that derrive from GameBase have this defined.\n")
+{
+	return object->setInputVel(vel);
+}
+
+
+DefineEngineMethod(PlayerControllerComponent, setAccel, void, (Point3F vel), ,
+	"@brief Apply an impulse to this object as defined by a world position and velocity vector.\n\n"
+
+	"@param pos impulse world position\n"
+	"@param vel impulse velocity (impulse force F = m * v)\n"
+	"@return Always true\n"
+
+	"@note Not all objects that derrive from GameBase have this defined.\n")
+{
+	return object->setAcc(vel);
 }

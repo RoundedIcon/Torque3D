@@ -38,8 +38,8 @@ public:
 
    enum MaskBits {
       ThreadMaskN = Parent::NextFreeMask << 0,
-      ThreadMask = (ThreadMaskN << MaxScriptThreads) - ThreadMaskN,
-      NextFreeMask = ThreadMaskN << MaxScriptThreads
+		ThreadMask = ThreadMaskN << MaxScriptThreads,
+		NextFreeMask = ThreadMask << 1
    };
 
 protected:

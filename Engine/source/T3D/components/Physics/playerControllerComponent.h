@@ -170,7 +170,7 @@ public:
    virtual void processTick();
    virtual void interpolateTick(F32 dt);
    virtual void updatePos(const F32 dt);
-   void updateMove();
+   void updatedMove();
 
    virtual VectorF getVelocity() { return mVelocity; }
    virtual void setVelocity(const VectorF& vel);
@@ -183,6 +183,11 @@ public:
 
    //
    void applyImpulse(const Point3F &pos, const VectorF &vec);
+
+	void setInputVel(Point3F input) {mInputVelocity = input;}
+
+	VectorF acceler;
+	void setAcc(Point3F input) { acceler = input;}
 
    //This is a weird artifact of the PhysicsReps. We want the collision component to be privvy to any events that happen
    //so when the physics components do a findContact test during their update, they'll have a signal collision components

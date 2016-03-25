@@ -118,7 +118,7 @@ void	btGhostObject::convexSweepTest(const btConvexShape* castShape, const btTran
 	/// go over all objects, and if the ray intersects their aabb + cast shape aabb,
 	// do a ray-shape query using convexCaster (CCD)
 	int i;
-	for (i=0;i<m_overlappingObjects.size();i++)
+	for (i=0;i<m_overlappingObjects.size();i++)//
 	{
 		btCollisionObject*	collisionObject= m_overlappingObjects[i];
 		//only perform raycast if filterMask matches

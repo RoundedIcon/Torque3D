@@ -278,6 +278,14 @@ protected:
 
    GhostInfo *mFirstObjectRef;      ///< Head of a linked list storing GhostInfos referencing this NetObject.
 
+	NetConnection* mPacketConnection;
+	BitStream* mPacketStream;
+
+	DECLARE_CALLBACK(bool, writePacket, (NetObject* obj, U32 mask));
+	DECLARE_CALLBACK(void, readPacket, (NetObject* obj));
+	DECLARE_CALLBACK(bool, writeControlPacket, (NetObject* obj));
+	DECLARE_CALLBACK(void, readControlPacket, (NetObject* obj));
+
 public:
    NetObject();
    ~NetObject();
@@ -395,6 +403,9 @@ public:
 
    /// Returns a pointer to the client object when on a local connection.
    NetObject* getClientObject() const { return mClientObject; }
+
+	NetConnection* getPacketConnection() { return mPacketConnection; }
+	BitStream* getPacketStream() { return mPacketStream; }
    
    /// Template form for the callers convenience.
    template < class T >

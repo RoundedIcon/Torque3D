@@ -53,6 +53,7 @@ protected:
    StringTableEntry mComponentType;
    StringTableEntry mNetworkType;
    StringTableEntry mTemplateName;
+	StringTableEntry mComponentFieldName;
 
    Vector<StringTableEntry> mDependencies;
    Vector<ComponentField> mFields;
@@ -146,6 +147,10 @@ public:
 
    const char *getFriendlyName() { return mFriendlyName; }
 
+	const char *getFieldName() { return mComponentFieldName; }
+
+	void setFieldName(const char* name) { mComponentFieldName = name; }
+
    bool isNetworked() { return mNetworked; }
 
    void beginFieldGroup(const char* groupName);
@@ -162,6 +167,9 @@ public:
    //
    //static bool setTemplate(void *object, const char *index, const char *data);
 
+	virtual void updatedMove() {}
+	virtual void updatePos(F32 bloop) {}
+
    /// @Primary usage functions
    /// @These are used by the various engine-based behaviors to integrate with the component classes
    enum NetMaskBits
@@ -170,7 +178,8 @@ public:
       OwnerMask = BIT(1),
       UpdateMask = BIT(2),
       EnableMask = BIT(3),
-      NextFreeMask = BIT(4)
+		NamespaceMask = BIT(4),
+      NextFreeMask = BIT(5)
    };
 
    virtual U32 packUpdate(NetConnection *con, U32 mask, BitStream *stream);

@@ -292,7 +292,7 @@ bool BtPlayer::_sweep( btVector3 *inOutCurrPos, const btVector3 &disp, Collision
 	callback.m_collisionFilterMask = mGhostObject->getBroadphaseHandle()->m_collisionFilterMask;
 
    if (disp.length()>0.0001)
-      mGhostObject->convexSweepTest( mColShape, start, end, callback, 0.0f );
+      mGhostObject->convexSweepTest( mColShape, start, end, callback, 0.04f );
 
 	inOutCurrPos->setInterpolate3( start.getOrigin(), end.getOrigin(), callback.m_closestHitFraction );
    if ( callback.hasHit() )
@@ -328,7 +328,7 @@ void BtPlayer::_stepForward( btVector3 *inOutCurrPos, const btVector3 &displacem
    btTransform start( btTransform::getIdentity() );
    btTransform end( btTransform::getIdentity() );
    F32 fraction = 1.0f;
-   S32 maxIter = 10;
+   S32 maxIter = 5;
    btVector3 disp = displacement;
 
 	while ( fraction > 0.01f && maxIter-- > 0 )

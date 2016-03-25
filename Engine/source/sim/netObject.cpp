@@ -27,6 +27,8 @@
 #include "sim/netObject.h"
 #include "console/consoleTypes.h"
 #include "console/engineAPI.h"
+#include "sim/netConnection.h"
+#include "core/stream/bitStream.h"
 
 IMPLEMENT_CONOBJECT(NetObject);
 
@@ -46,6 +48,8 @@ NetObject::NetObject()
    mPrevDirtyList = NULL;
    mNextDirtyList = NULL;
    mDirtyMaskBits = 0;
+	mPacketConnection = NULL;
+	mPacketStream = NULL;
 }
 
 NetObject::~NetObject()
@@ -60,6 +64,11 @@ NetObject::~NetObject()
          mNextDirtyList->mPrevDirtyList = mPrevDirtyList;
    }
 }
+
+IMPLEMENT_CALLBACK(NetObject, writePacket, bool, (NetObject* obj, U32 mask), (mask), "@test\n");
+IMPLEMENT_CALLBACK(NetObject, readPacket, void, (NetObject* obj), (obj), "@test\n");
+IMPLEMENT_CALLBACK(NetObject, writeControlPacket, bool, (NetObject* obj), (obj), "@test\n");
+IMPLEMENT_CALLBACK(NetObject, readControlPacket, void, (NetObject* obj), (obj), "@test\n");
 
 String NetObject::describeSelf() const
 {
@@ -460,3 +469,77 @@ DefineEngineMethod( NetObject, isServerObject, bool, (),,
 //{
 //   return object->isServerObject();
 //}
+
+//------------------------------------------------------------------------
+/// Methods for writing to the current bitstream
+/// to-do: Console warning when attempting to work on a NULL bitstream
+///
+/// basic write and flags
+
+DefineConsoleMethod(NetObject, write, void, (S32 num), , "")
+{
+	object->getPacketStream()->write(num);
+}
+DefineConsoleMethod(NetObject, read, S32, (), , "")
+{
+	S32 num;
+	object->getPacketStream()->read(&num);
+	return num;
+}
+
+DefineConsoleMethod(NetObject, writeFlag, bool, (bool flag), , "")
+{
+	return object->getPacketStream()->writeFlag(flag);
+}
+DefineConsoleMethod(NetObject, readFlag, bool, (), , "")
+{
+	return object->getPacketStream()->readFlag();
+}
+
+//------------------------------------------------------------------------
+/// Signed int and float
+DefineConsoleMethod(NetObject, writeInt, void, (S32 num, S32 bitcount), , "")
+{
+	object->getPacketStream()->writeSignedInt(num, bitcount);
+}
+DefineConsoleMethod(NetObject, readInt, S32, (S32 bitCount), , "")
+{
+	return object->getPacketStream()->readSignedInt(bitCount);
+}
+
+DefineConsoleMethod(NetObject, writeFloat, void, (F32 num, S32 bitcount), , "")
+{
+	object->getPacketStream()->writeSignedFloat(num, bitcount);
+}
+DefineConsoleMethod(NetObject, readFloat, F32, (S32 bitCount), , "")
+{
+	return object->getPacketStream()->readSignedFloat(bitCount);
+}
+
+//------------------------------------------------------------------------
+/// Points
+DefineNewEngineMethod(NetObject, setCompressedPoint, void, (Point3F point), , "")
+{
+	object->getPacketStream()->setCompressionPoint(point);
+}
+DefineNewEngineMethod(NetObject, writeCompressedPoint, void, (Point3F point, F32 scale), (0), "")
+{
+	object->getPacketStream()->writeCompressedPoint(point, scale);
+}
+DefineNewEngineMethod(NetObject, readCompressedPoint, Point3F, (F32 scale), (0), "")
+{
+	Point3F point;
+	object->getPacketStream()->readCompressedPoint(&point, scale);
+	return point;
+}
+
+DefineConsoleMethod(NetObject, writeString, void, (String string, S32 maxlen), (255), "")
+{
+	object->getPacketStream()->writeString(string, maxlen);
+}
+DefineConsoleMethod(NetObject, readString, String, (),, "")
+{
+	char buff[256];
+	object->getPacketStream()->readString(buff);
+	return String(buff);
+}

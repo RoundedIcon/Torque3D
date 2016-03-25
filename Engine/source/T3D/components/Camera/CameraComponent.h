@@ -44,7 +44,6 @@ class CameraComponent : public Component, public CameraInterface
 
 protected:
    Point3F mPosOffset;
-   RotationF mRotOffset;
 
    StringTableEntry mTargetNode;
    S32 mTargetNodeIdx;
@@ -63,12 +62,16 @@ public:
    virtual ~CameraComponent();
    DECLARE_CONOBJECT(CameraComponent);
 
+	RotationF mRotOffset;
+
    virtual bool onAdd();
    virtual void onRemove();
    static void initPersistFields();
 
    static bool _setCameraFov(void *object, const char *index, const char *data);
 
+	void writePacketData(NetConnection *conn, BitStream *stream);
+	void readPacketData(NetConnection *conn, BitStream *stream);
    virtual U32 packUpdate(NetConnection *con, U32 mask, BitStream *stream);
    virtual void unpackUpdate(NetConnection *con, BitStream *stream);
 

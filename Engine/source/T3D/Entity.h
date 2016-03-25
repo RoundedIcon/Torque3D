@@ -56,6 +56,8 @@ class Entity : public GameBase
    typedef GameBase Parent;
    friend class Component;
 
+	DECLARE_CALLBACK(void, updateEnt, (Entity* ent));
+
 private:
    Point3F             mPos;
    RotationF           mRot;
@@ -75,11 +77,15 @@ private:
 
    Signal< void(MatrixF*) > Entity::onTransformSet;
 
+	virtual U32 getPacketDataChecksum( GameConnection *conn );
+
 protected:
 
    virtual void   processTick(const Move* move);
    virtual void   advanceTime(F32 dt);
    virtual void   interpolateTick(F32 delta);
+
+	void addComponentField(const char *fieldName, Component* comp);
 
    void prepRenderImage(SceneRenderState *state);
 
@@ -87,6 +93,9 @@ protected:
    virtual void onRemove();
 
 public:
+
+	Component* physics;
+
    struct StateDelta
    {
       Move move;                    ///< Last move from server
@@ -108,7 +117,8 @@ public:
       BoundsMask = Parent::NextFreeMask << 1,
       ComponentsMask = Parent::NextFreeMask << 2,
       NoWarpMask = Parent::NextFreeMask << 3,
-      NextFreeMask = Parent::NextFreeMask << 4
+		NamespaceMask = Parent::NextFreeMask << 4,
+      NextFreeMask = Parent::NextFreeMask << 5
    };
 
    StateDelta mDelta;
@@ -167,8 +177,13 @@ public:
    U32 packUpdate(NetConnection *conn, U32 mask, BitStream *stream);
    void unpackUpdate(NetConnection *conn, BitStream *stream);
 
+	void writePacketData(GameConnection *conn, BitStream *stream);
+	void readPacketData(GameConnection *conn, BitStream *stream);
+
    void setComponentsDirty();
    void setComponentDirty(Component *comp, bool forceUpdate = false);
+
+	void addNamespace(const char* newspace);
 
    //Components
    virtual bool deferAddingComponents() const { return true; }
@@ -204,6 +219,8 @@ public:
    //void pushEvent(const char* eventName, Vector<const char*> eventParams);
 
    void updateContainer();
+
+	Point3F _getRotation() { return mRot.asEulerF(); }
 
    ContainerQueryInfo getContainerInfo() { return containerInfo; }
 

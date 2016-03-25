@@ -70,7 +70,7 @@ btCollisionWorld::btCollisionWorld(btDispatcher* dispatcher,btBroadphaseInterfac
 :m_dispatcher1(dispatcher),
 m_broadphasePairCache(pairCache),
 m_debugDrawer(0),
-m_forceUpdateAllAabbs(true)
+m_forceUpdateAllAabbs(false)
 {
 }
 
@@ -801,11 +801,32 @@ void	btCollisionWorld::objectQuerySingleInternal(const btConvexShape* castShape,
 				BT_PROFILE("convexSweepCompound");
 				const btCompoundShape* compoundShape = static_cast<const btCompoundShape*>(collisionShape);
 				int i=0;
+
+				btVector3 castShapeAabbMin, castShapeAabbMax;
+				/* Compute AABB that encompasses angular movement */
+				{
+					btVector3 linVel, angVel;
+					btTransformUtil::calculateVelocity(convexFromTrans, convexToTrans, 1.0, linVel, angVel);
+					btTransform R;
+					R.setIdentity();
+					R.setRotation(convexFromTrans.getRotation());
+					castShape->calculateTemporalAabb(R, linVel, angVel, 1.0, castShapeAabbMin, castShapeAabbMax);
+				}
+
 				for (i=0;i<compoundShape->getNumChildShapes();i++)
 				{
 					btTransform childTrans = compoundShape->getChildTransform(i);
 					const btCollisionShape* childCollisionShape = compoundShape->getChildShape(i);
 					btTransform childWorldTrans = colObjWorldTransform * childTrans;
+
+					btVector3 collisionObjectAabbMin, collisionObjectAabbMax;
+					childCollisionShape->getAabb(childTrans, collisionObjectAabbMin, collisionObjectAabbMax);
+					AabbExpand(collisionObjectAabbMin, collisionObjectAabbMax, castShapeAabbMin, castShapeAabbMax);
+					btScalar hitLambda = btScalar(1.); //could use resultCallback.m_closestHitFraction, but needs testing
+					btVector3 hitNormal;
+					if (!btRayAabb(convexFromTrans.getOrigin(), convexToTrans.getOrigin(), collisionObjectAabbMin, collisionObjectAabbMax, hitLambda, hitNormal))
+						continue;
+					
 					
                     struct	LocalInfoAdder : public ConvexResultCallback {
                             ConvexResultCallback* m_userCallback;

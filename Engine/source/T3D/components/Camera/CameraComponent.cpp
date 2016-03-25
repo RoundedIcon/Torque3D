@@ -86,6 +86,8 @@ bool CameraComponent::onAdd()
    if(! Parent::onAdd())
       return false;
 
+	mNetFlags.set(Ghostable);
+
    return true;
 }
 

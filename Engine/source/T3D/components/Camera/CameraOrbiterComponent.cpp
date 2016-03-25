@@ -41,6 +41,8 @@ bool CameraOrbiterComponent::onAdd()
    if (!Parent::onAdd())
       return false;
 
+	mNetFlags.set(Ghostable | ScopeAlways);
+
    return true;
 }
 

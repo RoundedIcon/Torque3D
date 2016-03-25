@@ -25,6 +25,7 @@
 #include "core/stream/bitStream.h"
 #include "console/consoleTypes.h"
 #include "console/consoleObject.h"
+#include "console/console.h"
 #include "sim/netConnection.h"
 #include "scene/sceneRenderState.h"
 #include "scene/sceneManager.h"
@@ -120,6 +121,7 @@ Entity::Entity()
 
    mInitialized = false;
 
+	physics = NULL;
 }
 
 Entity::~Entity()
@@ -228,6 +230,8 @@ bool Entity::onAdd()
    //Make sure we get positioned
    setMaskBits(TransformMask);
 
+	setMaskBits(NamespaceMask);
+
    return true;
 }
 
@@ -272,11 +276,20 @@ void Entity::onStaticModified(const char* slotName, const char* newValue)
    onDataSet.trigger(this, slotName, newValue);
 }
 
+IMPLEMENT_CALLBACK(Entity, updateEnt, void, (Entity* ent), (ent),
+	"Called when the player updates it's movement, only called if object is set to callback in script(doUpdateMove).\n"
+	"@param obj the Player object\n");
+
 //Updating
 void Entity::processTick(const Move* move)
 {
    if (!isHidden())
    {
+		if(physics && physics->getId())
+		{
+			physics->updatedMove();
+			physics->updatePos(TickSec);
+		}
       if (mDelta.warpCount < mDelta.warpTicks)
       {
          mDelta.warpCount++;
@@ -330,7 +343,7 @@ void Entity::processTick(const Move* move)
       else
          lastMove = NullMove;
 
-      if (move && isServerObject())
+		if (move)
       {
          if ((move->y != 0 || prevMove.y != 0) 
             || (move->x != 0 || prevMove.x != 0) 
@@ -368,8 +381,27 @@ void Entity::processTick(const Move* move)
          }
       }
 
-      if (isMethod("processTick"))
-         Con::executef(this, "processTick");
+		updateEnt_callback(this);
+
+		while (mRot.x < -M_PI_F)
+			mRot.x += M_2PI_F;
+		while (mRot.x > M_PI_F)
+			mRot.x -= M_2PI_F;
+
+		while (mRot.y < -M_PI_F)
+			mRot.y += M_2PI_F;
+		while (mRot.y > M_PI_F)
+			mRot.y -= M_2PI_F;
+
+		while (mRot.z < -M_PI_F)
+			mRot.z += M_2PI_F;
+		while (mRot.z > M_PI_F)
+			mRot.z -= M_2PI_F;
+
+		while (mRot.w < -M_PI_F)
+			mRot.w += M_2PI_F;
+		while (mRot.w > M_PI_F)
+			mRot.w -= M_2PI_F;
    }
 }
 
@@ -391,8 +423,46 @@ void Entity::interpolateTick(F32 dt)
 
       setRenderTransform(pos, rot);
    }
+	mDelta.dt = dt;
+}
 
-   mDelta.dt = dt;
+// Thingy
+void Entity::addComponentField(const char *fieldName, Component* comp)
+{
+	//if (fieldName == "")
+	//	return;
+
+	StringTableEntry stFieldName = StringTable->insert(fieldName);
+	ComponentField field;
+	field.mFieldName = stFieldName;
+
+	//Before we set this, we need to do a test to see if this field was already set, like from the mission file or a taml file
+	//const char* curFieldData = getDataField(field.mFieldName, NULL);
+	//if (!dStrIsEmpty(curFieldData))
+	//	return;
+
+	//find the field type
+	S32 fieldTypeMask = -1;
+	//StringTableEntry fieldType = StringTable->insert(type);
+
+	//if (fieldType == StringTable->insert("TypeS32"))
+		fieldTypeMask = TypeS32;
+	//else
+	//	fieldTypeMask = TypeString;
+
+	field.mFieldType = fieldTypeMask;
+
+	field.mUserData = StringTable->insert("");
+
+	const char* sID = comp->getIdString();
+	field.mDefaultValue = StringTable->insert(sID);
+
+	field.mFieldDescription = "";
+	//field.mDependency = StringTable->insert(dependency ? dependency : "");
+	field.mGroup = "componentId";
+	field.mHidden = false;
+
+	setDataField(field.mFieldName, NULL, field.mDefaultValue);
 }
 
 //Render
@@ -400,25 +470,53 @@ void Entity::prepRenderImage(SceneRenderState *state)
 {
 }
 
+void Entity::writePacketData(GameConnection *conn, BitStream *stream)
+{
+	//mathWrite( *stream, getScale() );
+	//stream->writeAffineTransform(mObjToWorld);
+	//mathWrite(*stream, getPosition());
+	Parent::writePacketData(conn, stream);
+
+	if ( stream->writeFlag(writeControlPacket_callback(this)))
+		return;
+
+	stream->setCompressionPoint(mPos);
+	mathWrite(*stream, mPos);
+	mathWrite(*stream, getRotation().asEulerF());
+	mDelta.move.pack(stream);
+};
+void Entity::readPacketData(GameConnection *conn, BitStream *stream)
+{
+	Parent::readPacketData(conn, stream);
+
+	readControlPacket_callback(this);
+
+	if ( stream->readFlag() )
+		return;
+
+	mathRead(*stream, &mPos);
+
+	RotationF rot;
+	EulerF eRot;
+	mathRead(*stream, &eRot);
+	mRot = RotationF(eRot);
+
+	mDelta.move.unpack(stream);
+
+	stream->setCompressionPoint(mPos);
+
+	mDelta.dt = 0;
+	mDelta.pos = mPos;
+	mDelta.posVec.set(0, 0, 0);
+	mDelta.rot[1] = mDelta.rot[0] = mRot.asQuatF();
+	mDelta.warpCount = mDelta.warpTicks = 0;
+	setTransform(mPos, mRot);
+}
+
 //Networking
 U32 Entity::packUpdate(NetConnection *con, U32 mask, BitStream *stream)
 {
    U32 retMask = Parent::packUpdate(con, mask, stream);
-
-   if (stream->writeFlag(mask & TransformMask))
-   {
-      //mathWrite( *stream, getScale() );
-      //stream->writeAffineTransform(mObjToWorld);
-      //mathWrite(*stream, getPosition());
-      mathWrite(*stream, mPos);
-
-      //mathWrite(*stream, getRotation());
-      mathWrite(*stream, getRotation().asEulerF());
-
-      mDelta.move.pack(stream);
-
-      stream->writeFlag(!(mask & NoWarpMask));
-   }
 
    /*if (stream->writeFlag(mask & MountedMask))
    {
@@ -488,154 +586,67 @@ U32 Entity::packUpdate(NetConnection *con, U32 mask, BitStream *stream)
    else
       stream->writeFlag(false);
 
+	bool stop = false;
+	if (stream->writeFlag(mask & NamespaceMask))
+	{
+		const char* name = getName();
+		if (stream->writeFlag(name && name[0]))
+			stream->writeString(String(name));
+
+		if (stream->writeFlag(mSuperClassName && mSuperClassName[0]))
+			stream->writeString(String(mSuperClassName));
+
+		if (stream->writeFlag(mClassName && mClassName[0]))
+			stream->writeString(String(mClassName));
+	}
+	else
+	{
+		mPacketStream = stream;
+		stop = writePacket_callback(this, mask);
+		mPacketStream = NULL;
+	}
+
+	/*(if (stream->writeFlag(mask & NamespaceMask))
+	{
+		const char* name = getName();
+		if (stream->writeFlag(name && name[0]))
+			stream->writeString(String(name));
+
+		if (stream->writeFlag(mSuperClassName && mSuperClassName[0]))
+			stream->writeString(String(mSuperClassName));
+
+		if (stream->writeFlag(mClassName && mClassName[0]))
+			stream->writeString(String(mClassName));
+	}*/
+
+	if (stream->writeFlag((getControllingClient() == con || stop) && !(mask & InitialUpdateMask)))
+		return retMask;
+	
+	//mathWrite( *stream, getScale() );
+	//stream->writeAffineTransform(mObjToWorld);
+	//mathWrite(*stream, getPosition());
+	stream->writeCompressedPoint( mPos );
+
+	//stream->writeFloat(mRot.z / M_2PI_F, 7);
+	//mathWrite(*stream, getRotation());
+	Point3F rot = getRotation().asEulerF();
+
+	//stream->writeNormalVector(rot, 14);
+
+	stream->writeSignedFloat(rot.x / M_2PI_F, 7);
+	stream->writeSignedFloat(rot.y / M_2PI_F, 7);
+	stream->writeSignedFloat(rot.z / M_2PI_F, 7);
+
+	mDelta.move.pack(stream);
+
+	stream->writeFlag(!(mask & NoWarpMask));
+
    return retMask;
 }
 
 void Entity::unpackUpdate(NetConnection *con, BitStream *stream)
 {
    Parent::unpackUpdate(con, stream);
-
-   if (stream->readFlag())
-   {
-      /*Point3F scale;
-      mathRead( *stream, &scale );
-      setScale( scale);*/
-
-      //MatrixF objToWorld;
-      //stream->readAffineTransform(&objToWorld);
-
-      Point3F pos;
-
-      mathRead(*stream, &pos);
-
-      RotationF rot;
-
-      EulerF eRot;
-      mathRead(*stream, &eRot);
-
-      rot = RotationF(eRot);
-
-      mDelta.move.unpack(stream);
-
-      if (stream->readFlag() && isProperlyAdded())
-      {
-         // Determine number of ticks to warp based on the average
-         // of the client and server velocities.
-         /*mDelta.warpOffset = pos - mDelta.pos;
-
-         F32 dt = mDelta.warpOffset.len() / (0.5f * TickSec);
-
-         mDelta.warpTicks = (S32)((dt > sMinWarpTicks) ? getMax(mFloor(dt + 0.5f), 1.0f) : 0.0f);
-
-         //F32 as = (speed + mVelocity.len()) * 0.5f * TickSec;
-         //F32 dt = (as > 0.00001f) ? mDelta.warpOffset.len() / as : sMaxWarpTicks;
-         //mDelta.warpTicks = (S32)((dt > sMinWarpTicks) ? getMax(mFloor(dt + 0.5f), 1.0f) : 0.0f);
-
-         //mDelta.warpTicks = (S32)((dt > sMinWarpTicks) ? getMax(mFloor(dt + 0.5f), 1.0f) : 0.0f);
-
-         //mDelta.warpTicks = sMaxWarpTicks;
-
-         mDelta.warpTicks = 0;
-
-         if (mDelta.warpTicks)
-         {
-            // Setup the warp to start on the next tick.
-            if (mDelta.warpTicks > sMaxWarpTicks)
-               mDelta.warpTicks = sMaxWarpTicks;
-            mDelta.warpOffset /= (F32)mDelta.warpTicks;
-
-            mDelta.rot[0] = rot.asQuatF();
-            mDelta.rot[1] = rot.asQuatF();
-
-            mDelta.rotOffset = rot.asEulerF() - mDelta.rot.asEulerF();
-
-            // Ignore small rotation differences
-            if (mFabs(mDelta.rotOffset.x) < 0.001f)
-               mDelta.rotOffset.x = 0;
-
-            if (mFabs(mDelta.rotOffset.y) < 0.001f)
-               mDelta.rotOffset.y = 0;
-
-            if (mFabs(mDelta.rotOffset.z) < 0.001f)
-               mDelta.rotOffset.z = 0;
-
-            mDelta.rotOffset /= (F32)mDelta.warpTicks;
-         }
-         else
-         {
-            // Going to skip the warp, server and client are real close.
-            // Adjust the frame interpolation to move smoothly to the
-            // new position within the current tick.
-            Point3F cp = mDelta.pos + mDelta.posVec * mDelta.dt;
-            if (mDelta.dt == 0)
-            {
-               mDelta.posVec.set(0.0f, 0.0f, 0.0f);
-               mDelta.rotVec.set(0.0f, 0.0f, 0.0f);
-            }
-            else
-            {
-               F32 dti = 1.0f / mDelta.dt;
-               mDelta.posVec = (cp - pos) * dti;
-               mDelta.rotVec.z = mRot.z - rot.z;
-
-               mDelta.rotVec.z *= dti;
-            }
-
-            mDelta.pos = pos;
-            mDelta.rot = rot;
-
-            setTransform(pos, rot);
-         }*/
-
-         Point3F cp = mDelta.pos + mDelta.posVec * mDelta.dt;
-         mDelta.warpOffset = pos - cp;
-
-         // Calc the distance covered in one tick as the average of
-         // the old speed and the new speed from the server.
-         VectorF vel = pos - mDelta.pos;
-         F32 dt, as = vel.len() * 0.5 * TickSec;
-
-         // Cal how many ticks it will take to cover the warp offset.
-         // If it's less than what's left in the current tick, we'll just
-         // warp in the remaining time.
-         if (!as || (dt = mDelta.warpOffset.len() / as) > sMaxWarpTicks)
-            dt = mDelta.dt + sMaxWarpTicks;
-         else
-            dt = (dt <= mDelta.dt) ? mDelta.dt : mCeil(dt - mDelta.dt) + mDelta.dt;
-
-         // Adjust current frame interpolation
-         if (mDelta.dt)
-         {
-            mDelta.pos = cp + (mDelta.warpOffset * (mDelta.dt / dt));
-            mDelta.posVec = (cp - mDelta.pos) / mDelta.dt;
-            QuatF cr;
-            cr.interpolate(mDelta.rot[1], mDelta.rot[0], mDelta.dt);
-            mDelta.rot[1].interpolate(cr, pos, mDelta.dt / dt);
-            mDelta.rot[0].extrapolate(mDelta.rot[1], cr, mDelta.dt);
-         }
-
-         // Calculated multi-tick warp
-         mDelta.warpCount = 0;
-         mDelta.warpTicks = (S32)(mFloor(dt));
-         if (mDelta.warpTicks)
-         {
-            mDelta.warpOffset = pos - mDelta.pos;
-            mDelta.warpOffset /= mDelta.warpTicks;
-            mDelta.warpRot[0] = mDelta.rot[1];
-            mDelta.warpRot[1] = rot.asQuatF();
-         }
-      }
-      else
-      {
-         // Set the entity to the server position
-         mDelta.dt = 0;
-         mDelta.pos = pos;
-         mDelta.posVec.set(0, 0, 0);
-         mDelta.rot[1] = mDelta.rot[0] = rot.asQuatF();
-         mDelta.warpCount = mDelta.warpTicks = 0;
-         setTransform(pos, rot);
-      }
-   }
 
    /*if (stream->readFlag())
    {
@@ -671,10 +682,184 @@ void Entity::unpackUpdate(NetConnection *con, BitStream *stream)
          for (U32 i = 0; i < componentCount; i++)
          {
             S32 gIndex = stream->readInt(NetConnection::GhostIdBitSize);
-            addComponent(dynamic_cast<Component*>(con->resolveGhost(gIndex)));
+            Component* comp = dynamic_cast<Component*>(con->resolveGhost(gIndex));
+				addComponent(comp);
          }
       }
    }
+
+	if (stream->readFlag())
+	{
+		if (stream->readFlag())
+		{
+			char name[256];
+			stream->readString(name);
+			assignName(name);
+		}
+		if (stream->readFlag())
+		{
+			char superClassname[256];
+			stream->readString(superClassname);
+			mSuperClassName = superClassname;
+		}
+		if (stream->readFlag())
+		{
+			char classname[256];
+			stream->readString(classname);
+			mClassName = classname;
+		}
+
+		linkNamespaces();
+	}
+	else
+	{
+		mPacketStream = stream;
+		readPacket_callback(this);
+		mPacketStream = NULL;
+	}
+
+	if (stream->readFlag())
+		return;
+
+	/*Point3F scale;
+	mathRead( *stream, &scale );
+	setScale( scale);*/
+
+	//MatrixF objToWorld;
+	//stream->readAffineTransform(&objToWorld);
+
+	stream->readCompressedPoint(&mPos);
+
+	Point3F eRot;
+	//stream->readNormalVector(&eRot, 14);
+	eRot.x = stream->readSignedFloat(7) * M_2PI_F;
+	eRot.y = stream->readSignedFloat(7) * M_2PI_F;
+	eRot.z = stream->readSignedFloat(7) * M_2PI_F;
+	mRot = RotationF(eRot);
+
+	mDelta.move.unpack(stream);
+
+	Point3F pos = mPos;
+	RotationF rot = mRot;
+
+	if (stream->readFlag() && isProperlyAdded())
+	{
+		// Determine number of ticks to warp based on the average
+		// of the client and server velocities.
+		/*mDelta.warpOffset = pos - mDelta.pos;
+
+		F32 dt = mDelta.warpOffset.len() / (0.5f * TickSec);
+
+		mDelta.warpTicks = (S32)((dt > sMinWarpTicks) ? getMax(mFloor(dt + 0.5f), 1.0f) : 0.0f);
+
+		//F32 as = (speed + mVelocity.len()) * 0.5f * TickSec;
+		//F32 dt = (as > 0.00001f) ? mDelta.warpOffset.len() / as : sMaxWarpTicks;
+		//mDelta.warpTicks = (S32)((dt > sMinWarpTicks) ? getMax(mFloor(dt + 0.5f), 1.0f) : 0.0f);
+
+		//mDelta.warpTicks = (S32)((dt > sMinWarpTicks) ? getMax(mFloor(dt + 0.5f), 1.0f) : 0.0f);
+
+		//mDelta.warpTicks = sMaxWarpTicks;
+
+		mDelta.warpTicks = 0;
+
+		if (mDelta.warpTicks)
+		{
+		// Setup the warp to start on the next tick.
+		if (mDelta.warpTicks > sMaxWarpTicks)
+		mDelta.warpTicks = sMaxWarpTicks;
+		mDelta.warpOffset /= (F32)mDelta.warpTicks;
+
+		mDelta.rot[0] = rot.asQuatF();
+		mDelta.rot[1] = rot.asQuatF();
+
+		mDelta.rotOffset = rot.asEulerF() - mDelta.rot.asEulerF();
+
+		// Ignore small rotation differences
+		if (mFabs(mDelta.rotOffset.x) < 0.001f)
+		mDelta.rotOffset.x = 0;
+
+		if (mFabs(mDelta.rotOffset.y) < 0.001f)
+		mDelta.rotOffset.y = 0;
+
+		if (mFabs(mDelta.rotOffset.z) < 0.001f)
+		mDelta.rotOffset.z = 0;
+
+		mDelta.rotOffset /= (F32)mDelta.warpTicks;
+		}
+		else
+		{
+		// Going to skip the warp, server and client are real close.
+		// Adjust the frame interpolation to move smoothly to the
+		// new position within the current tick.
+		Point3F cp = mDelta.pos + mDelta.posVec * mDelta.dt;
+		if (mDelta.dt == 0)
+		{
+		mDelta.posVec.set(0.0f, 0.0f, 0.0f);
+		mDelta.rotVec.set(0.0f, 0.0f, 0.0f);
+		}
+		else
+		{
+		F32 dti = 1.0f / mDelta.dt;
+		mDelta.posVec = (cp - pos) * dti;
+		mDelta.rotVec.z = mRot.z - rot.z;
+
+		mDelta.rotVec.z *= dti;
+		}
+
+		mDelta.pos = pos;
+		mDelta.rot = rot;
+
+		setTransform(pos, rot);
+		}*/
+
+		Point3F cp = mDelta.pos + mDelta.posVec * mDelta.dt;
+		mDelta.warpOffset = pos - cp;
+
+		// Calc the distance covered in one tick as the average of
+		// the old speed and the new speed from the server.
+		VectorF vel = pos - mDelta.pos;
+		F32 dt, as = vel.len() * 0.5 * TickSec;
+
+		// Cal how many ticks it will take to cover the warp offset.
+		// If it's less than what's left in the current tick, we'll just
+		// warp in the remaining time.
+		if (!as || (dt = mDelta.warpOffset.len() / as) > sMaxWarpTicks)
+			dt = mDelta.dt + sMaxWarpTicks;
+		else
+			dt = (dt <= mDelta.dt) ? mDelta.dt : mCeil(dt - mDelta.dt) + mDelta.dt;
+
+		// Adjust current frame interpolation
+		if (mDelta.dt)
+		{
+			mDelta.pos = cp + (mDelta.warpOffset * (mDelta.dt / dt));
+			mDelta.posVec = (cp - mDelta.pos) / mDelta.dt;
+			QuatF cr;
+			cr.interpolate(mDelta.rot[1], mDelta.rot[0], mDelta.dt);
+			mDelta.rot[1].interpolate(cr, pos, mDelta.dt / dt);
+			mDelta.rot[0].extrapolate(mDelta.rot[1], cr, mDelta.dt);
+		}
+
+		// Calculated multi-tick warp
+		mDelta.warpCount = 0;
+		mDelta.warpTicks = (S32)(mFloor(dt));
+		if (mDelta.warpTicks)
+		{
+			mDelta.warpOffset = pos - mDelta.pos;
+			mDelta.warpOffset /= mDelta.warpTicks;
+			mDelta.warpRot[0] = mDelta.rot[1];
+			mDelta.warpRot[1] = rot.asQuatF();
+		}
+	}
+	else
+	{
+		// Set the entity to the server position
+		mDelta.dt = 0;
+		mDelta.pos = pos;
+		mDelta.posVec.set(0, 0, 0);
+		mDelta.rot[1] = mDelta.rot[0] = rot.asQuatF();
+		mDelta.warpCount = mDelta.warpTicks = 0;
+		setTransform(pos, rot);
+	}
 }
 
 //Manipulation
@@ -1234,7 +1419,31 @@ bool Entity::addComponent(Component *comp)
 
    onComponentAdded.trigger(comp);
 
+	addComponentField(comp->getFieldName(), comp);
+
    return true;
+}
+
+U32 Entity::getPacketDataChecksum(GameConnection *conn)
+{
+	static U8 buffer[1500] = { 0, };
+	BitStream stream(buffer, sizeof(buffer));
+
+	Point3F pos = getPosition();
+	stream.write((S32)(pos.x));
+	stream.write((S32)(pos.y));
+	stream.write((S32)(pos.z));
+
+	//EulerF rot = getRotation().asEulerF();
+
+	//stream.write((S32)(rot.x * 10.0f));
+	//stream.write((S32)(rot.y * 10.0f));
+	//stream.write((S32)(rot.z * 10.0f));
+
+	U32 byteCount = stream.getPosition();
+	U32 ret = CRC::calculateCRC(buffer, byteCount, 0xFFFFFFFF);
+	dMemset(buffer, 0, byteCount);
+	return ret;
 }
 
 SimObject* Entity::findObjectByInternalName(StringTableEntry internalName, bool searchChildren)
@@ -1782,6 +1991,18 @@ ConsoleMethod(Entity, clearComponents, void, 2, 2, "() - Clear all behavior inst
    "@return No return value")
 {
    object->clearComponents();
+}
+
+DefineConsoleMethod(Entity, getRotation, Point3F, (), , "")
+{
+	MatrixF trans = object->getTransform();
+	EulerF rot = trans.toEuler();
+	return rot;
+}
+
+DefineConsoleMethod(Entity, methodTest, void, (), , "")
+{
+	Con::printf("worked");
 }
 
 ConsoleMethod(Entity, getComponentByIndex, S32, 3, 3, "(int index) - Gets a particular behavior\n"
